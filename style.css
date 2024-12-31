@@ -10,26 +10,18 @@ body {
 
 .board {
     display: grid;
-    grid-template-columns: repeat(5, 120px);
-    grid-template-rows: repeat(5, 120px);
+    grid-template-columns: repeat(5, 1fr);
     gap: 10px;
 }
 
 .card {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    padding: 20px;
     text-align: center;
-    font-size: 16px;
-    color: #333;
-    background-color: #f0e68c;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ccc;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: background-color 0.3s;
 }
 
-.card:hover {
-    transform: scale(1.05);
+.card.revealed {
+    cursor: default;
 }

@@ -36,6 +36,14 @@ const colors = shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')
     .concat(Array(7).fill('rgba(128, 128, 128, 0.7)'))
     .concat(['black']), seed); // Shuffle colors
 
+// Initialize scores
+let scores = {
+    'rgba(255, 0, 0, 0.7)': 0, // Red
+    'rgba(0, 0, 255, 0.7)': 0, // Blue
+    'rgba(128, 128, 128, 0.7)': 0, // Neutral
+    'black': 0 // Bomb
+};
+
 // Populate the board
 const boardElement = document.getElementById('board');
 boardWords.forEach((word, index) => {
@@ -46,11 +54,18 @@ boardWords.forEach((word, index) => {
     // Add click event to reveal color
     card.addEventListener('click', () => {
         if (!card.classList.contains('revealed')) { // Avoid re-clicking
-            card.style.backgroundColor = colors[index];
+            const color = colors[index];
+            card.style.backgroundColor = color;
             card.classList.add('revealed');
 
+            // Update score
+            if (color !== 'rgba(128, 128, 128, 0.7)') { // Ignore neutral color
+                scores[color]++;
+                updateScoreboard();
+            }
+
             // If the bomb (dark tile) is clicked, add special handling
-            if (colors[index] === 'black') {
+            if (color === 'black') {
                 card.style.color = 'white'; // Make text visible on dark background
                 alert("Bomb tile! Game over.");
             }
@@ -59,3 +74,9 @@ boardWords.forEach((word, index) => {
 
     boardElement.appendChild(card);
 });
+
+function updateScoreboard() {
+    const redScore = scores['rgba(255, 0, 0, 0.7)'];
+    const blueScore = scores['rgba(0, 0, 255, 0.7)'];
+    document.getElementById('score').innerText = `${redScore}-${blueScore}`;
+}

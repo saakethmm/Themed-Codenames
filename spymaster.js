@@ -28,7 +28,7 @@ function shuffle(array, seed) {
     return array;
 }
 
-const seed = 3463; // Shared seed for consistency
+const seed = 3; // Shared seed for consistency
 
 const boardWords = shuffle(hinduWords.slice(), seed).slice(0, 25); // Shuffle words
 const colors = shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')

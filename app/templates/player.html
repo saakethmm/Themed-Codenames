@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hindu Themed Codenames Board</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="scoreboard">
+        <div id="score"></div>
+        <div id="turn" class="turn-indicator"></div>
+    </div>
+    <div class="board" id="board"></div>
+    <button id="shuffle-board" class="shuffle-button">Shuffle Board</button>
+    <script type="module" src="{{ url_for('static', filename='js/player.js') }}"></script>
+</body>
+</html>

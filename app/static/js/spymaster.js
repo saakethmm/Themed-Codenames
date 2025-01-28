@@ -1,5 +1,24 @@
 import { hinduWords } from './hinduwords.js';
 
+// RANDOM SEED LOGIC
+
+// Shared seed logic
+const urlParams = new URLSearchParams(window.location.search);
+let seed = urlParams.get('seed');
+
+if (!seed) {
+    seed = Math.floor(Math.random() * 10000); // Generate a random seed
+    urlParams.set('seed', seed);
+
+    // Update the URL without reloading the page
+    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+}
+
+console.log(`Seed used: ${seed}`); // Log the seed
+
+/* ---------------------------------------------------------------- */
+
 // Seeded random number generator
 function seededRandom(seed) {
     let m = 0x80000000; // 2**31
@@ -27,8 +46,6 @@ function shuffle(array, seed) {
     }
     return array;
 }
-
-const seed = 3; // Shared seed for consistency
 
 const boardWords = shuffle(hinduWords.slice(), seed).slice(0, 25); // Shuffle words
 const colors = shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')

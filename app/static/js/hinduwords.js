@@ -1,4 +1,6 @@
 // hinduWords.js
+// TODO: This is where I store themed words from an LLM
+
 export const hinduWords = [
     // Deities and Mythological Figures
     "Shiva", "Lakshmi", "Krishna", "Ganesha", "Parvati", "Kartikeya", "Surya", "Agni", "Indra", "Varuna",

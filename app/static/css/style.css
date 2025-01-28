@@ -1,3 +1,5 @@
+/* this is where all of the style elements go */
+
 body {
     display: flex;
     flex-direction: column; /* Ensures vertical stacking of elements */
@@ -27,14 +29,22 @@ body {
 #score {
     font-size: 3rem; /* Makes the font large */
     font-weight: bold;
-    color: #333; /* Darker text for visibility */
     margin: 0;
+}
+
+.turn-indicator {
+    position: absolute;
+    right: 400px; /* Adjust to move closer/farther from the right edge */
+    bottom: 10px; /* Adjust to move closer/farther from the bottom edge */
+    font-size: 1rem;
+    font-weight: bold;
 }
 
 .board {
     display: grid;
     grid-template-columns: repeat(5, 120px);
     grid-template-rows: repeat(5, 120px);
+    margin-top: 10px;
     gap: 10px;
 }
 

@@ -1,4 +1,23 @@
 import { hinduWords } from './hinduwords.js';
+// TODO: implement shuffle board logic
+
+// RANDOM SEED LOGIC
+
+const urlParams = new URLSearchParams(window.location.search);
+// let seed = urlParams.get('seed');
+
+// if (!seed) {
+let seed = Math.floor(Math.random() * 10000); // Generate a random seed
+urlParams.set('seed', seed);
+
+// Update the URL without reloading the page
+const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+window.history.replaceState(null, '', newUrl);
+// }
+
+console.log(`Seed used: ${seed}`); // Log the seed
+
+/* ---------------------------------------------------------------- */
 
 // Seeded random number generator
 function seededRandom(seed) {
@@ -28,13 +47,13 @@ function shuffle(array, seed) {
     return array;
 }
 
-const seed = 3; // Shared seed for consistency
-
 const boardWords = shuffle(hinduWords.slice(), seed).slice(0, 25); // Shuffle words
 const colors = shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')
     .concat(Array(8).fill('rgba(0, 0, 255, 0.7)'))
     .concat(Array(7).fill('rgba(128, 128, 128, 0.7)'))
     .concat(['black']), seed); // Shuffle colors
+
+/* ---------------------------------------------------------------- */
 
 // Initialize scores
 let scores = {
@@ -44,27 +63,28 @@ let scores = {
     'black': 0 // Bomb
 };
 
+// Dictionary to map team colors to their respective scores
 let textColor = {
     'red': 'rgba(255, 0, 0, 0.7)',
-    'blue': 'rgba(0, 0, 255, 0.7)',
-    'neutral': 'rgba(128, 128, 128, 0.7)',
-    'black': 'black'
+    'blue': 'rgba(0, 0, 255, 0.7)'
 }
 
-let currentTurn = 'red'; // Start with red's turn
+// Update turn display
+let currentTurn = 'Red'; // Start with red's turn
 
 function updateTurnDisplay() {
     const turnElement = document.getElementById('turn');
     if (turnElement) {
         turnElement.innerHTML = `
-            <span style="color: ${currentTurn}; font-weight: bold;">${currentTurn.toUpperCase()}'s Turn</span>
+            <span style="color: ${currentTurn}; font-weight: bold;">${currentTurn}'s Turn</span>
         `;
+        console.log(`Current turn: ${currentTurn.toUpperCase()}`);
     } else {
         console.error('Turn element not found!');
     }
 }
 
-// Populate the board
+// Populate the board (where board is filled with cards, NOT in CSS file)
 const boardElement = document.getElementById('board');
 boardWords.forEach((word, index) => {
     const card = document.createElement('div');
@@ -86,29 +106,33 @@ boardWords.forEach((word, index) => {
 
             // Switch turns if necessary
             if (
-                (currentTurn === 'red' && (color === 'rgba(0, 0, 255, 0.7)' || color === 'rgba(128, 128, 128, 0.7)')) ||
-                (currentTurn === 'blue' && (color === 'rgba(255, 0, 0, 0.7)' || color === 'rgba(128, 128, 128, 0.7)'))
+                (currentTurn === 'Red' && (color === 'rgba(0, 0, 255, 0.7)' || color === 'rgba(128, 128, 128, 0.7)')) ||
+                (currentTurn === 'Blue' && (color === 'rgba(255, 0, 0, 0.7)' || color === 'rgba(128, 128, 128, 0.7)'))
             ) {
-                currentTurn = currentTurn === 'red' ? 'blue' : 'red';
+                currentTurn = currentTurn === 'Red' ? 'Blue' : 'Red';
+                console.log(`Turn changed to: ${currentTurn.toUpperCase()}`); // Log the new turn
                 updateTurnDisplay();
             }
 
             // If the bomb (dark tile) is clicked, add special handling
             if (color === 'black') {
                 card.style.color = 'white'; // Make text visible on dark background
-                alert("Bomb tile! Game over.");
+                const winningTeam = currentTurn === 'Red' ? 'Blue' : 'Red';
+                
+                // Immediately trigger the other team winning
+                const scoreboardElement = document.querySelector('.scoreboard');
+                scoreboardElement.innerHTML = `
+                    <span style="font-size: 3rem; color: ${winningTeam}; font-weight: bold;">
+                        ${winningTeam} Wins!
+                    </span>
+                `;
+                return; // Stop further execution
             }
         }
     });
 
     boardElement.appendChild(card);
 });
-
-// function updateScoreboard() {
-//     const redScore = scores['rgba(255, 0, 0, 0.7)'];
-//     const blueScore = scores['rgba(0, 0, 255, 0.7)'];
-//     document.getElementById('score').innerText = `${redScore}-${blueScore}`;
-// }
 
 // Initialize scores
 let blueScore = 0;
@@ -140,4 +164,12 @@ function updateScore(blue, red) {
 
 document.addEventListener('DOMContentLoaded', () => {
     updateScore(0, 0); // Initialize the scoreboard with 0-0
+    updateTurnDisplay(); // Initialize the turn display
+});
+
+window.addEventListener('beforeunload', (event) => {
+    if (confirmReload) {
+        event.preventDefault();
+        event.returnValue = ''; // Shows the browser's default warning
+    }
 });

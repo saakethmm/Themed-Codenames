@@ -1,4 +1,3 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import ollama 
 import openai
 import json
@@ -13,7 +12,10 @@ import json
 # doesn't keep generating
 
 # Use OpenAI API for users (Replace with your actual API key)
-openai.api_key = "your_openai_api_key" # TODO: replace with your actual API key
+openai.api_key = "your_openai_api_key" # TODO: replace with my actual API key
+
+# File to store generated words for frontend use
+GAME_WORDS_FILE = "game_words.json"
 
 # Precomputed words database (load from a file)
 WORDS_DB_FILE = "precomputed_words.json"
@@ -28,34 +30,39 @@ def save_precomputed_words():
     with open(WORDS_DB_FILE, "w") as file:
         json.dump(WORDS_DB, file, indent=4)
 
+def save_game_words(theme, words):
+    """Save the generated words for the current game session."""
+    with open(GAME_WORDS_FILE, "w") as file:
+        json.dump({"theme": theme, "words": words}, file, indent=4)
+
 def generate_words_local(theme):
     """Generate words using local Ollama (for personal use)."""
     prompt = f"Generate 40 unique words related to '{theme}':"
-    response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
-    return response["message"]["content"].split("\n")
+    response = ollama.chat(model="llama3.2:latest", messages=[{"role": "user", "content": prompt}])
+    words = response["message"]["content"].split("\n")
+
+    save_game_words(theme, words)  # Save 40 words
+    return words
 
 def generate_words_api(theme):
     """Generate words using OpenAI GPT-4o Mini API (for public users)."""
-    # Check precomputed words first
     if theme in WORDS_DB:
-        return random.sample(WORDS_DB[theme], 25)  # Shuffle precomputed list
+        words = random.sample(WORDS_DB[theme], 25)  # Shuffle precomputed list
+    else:
+        prompt = f"Generate 40 unique words related to '{theme}':"
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        words = response["choices"][0]["message"]["content"].split("\n")
+        words = [word.strip() for word in words if word.strip()]
+        WORDS_DB[theme] = words
+        save_precomputed_words()  # Cache for future use
 
-    # If not found, query GPT-4o Mini
-    prompt = f"Generate 40 unique words related to '{theme}':"
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7
-    )
-    
-    words = response["choices"][0]["message"]["content"].split("\n")
-    words = [word.strip() for word in words if word.strip()]
-    
-    # Cache the result for future requests
-    WORDS_DB[theme] = words
-    save_precomputed_words()
-    
+    save_game_words(theme, words)  # Save to game JSON
     return words
+
 
 def generate_words(theme, use_ollama=False):
     """Main function to generate words based on request type."""

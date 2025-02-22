@@ -166,10 +166,3 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScore(0, 0); // Initialize the scoreboard with 0-0
     updateTurnDisplay(); // Initialize the turn display
 });
-
-window.addEventListener('beforeunload', (event) => {
-    if (confirmReload) {
-        event.preventDefault();
-        event.returnValue = ''; // Shows the browser's default warning
-    }
-});

@@ -1,6 +1,7 @@
 import ollama 
 import openai
 import json
+import re
 
 
 # 1. for myself: use ollama to generate words locally using model of choice (mistral-7b or llama3-8b) 
@@ -30,6 +31,17 @@ def save_precomputed_words():
     with open(WORDS_DB_FILE, "w") as file:
         json.dump(WORDS_DB, file, indent=4)
 
+def comma_separated_list_from_numbered(words_str: str):
+    words = []
+    for line in words_str.split('\n'):
+        # Remove the numbering pattern (digits followed by a period and space)
+        cleaned_line = re.sub(r'^\d+\.\s+', '', line)
+        words.append(cleaned_line)
+
+    # Convert array to comma-separated string
+    return ", ".join(words)
+
+
 def save_game_words(theme, words):
     """Save the generated words for the current game session."""
     with open(GAME_WORDS_FILE, "w") as file:
@@ -37,9 +49,11 @@ def save_game_words(theme, words):
 
 def generate_words_local(theme):
     """Generate words using local Ollama (for personal use)."""
-    prompt = f"Generate 40 unique words related to '{theme}':"
+    prompt = f"Generate 40 different words related to {theme} as a numbered list. Don't include a header or footer:"
     response = ollama.chat(model="llama3.2:latest", messages=[{"role": "user", "content": prompt}])
-    words = response["message"]["content"].split("\n")
+    # Extract the words, removing only the list numbering pattern
+    words_str = words = response["message"]["content"]
+    words = comma_separated_list_from_numbered(words_str)
 
     save_game_words(theme, words)  # Save 40 words
     return words
@@ -49,14 +63,15 @@ def generate_words_api(theme):
     if theme in WORDS_DB:
         words = random.sample(WORDS_DB[theme], 25)  # Shuffle precomputed list
     else:
-        prompt = f"Generate 40 unique words related to '{theme}':"
+        prompt = f"Generate 40 different words or phrases related to {theme} as a numbered list. Don't include a header or footer:"
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
-        words = response["choices"][0]["message"]["content"].split("\n")
-        words = [word.strip() for word in words if word.strip()]
+        words_str = response["choices"][0]["message"]["content"]
+        words = comma_separated_list_from_numbered(words_str)
+
         WORDS_DB[theme] = words
         save_precomputed_words()  # Cache for future use
 

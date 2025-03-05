@@ -66,3 +66,22 @@ body {
 .card:hover {
     transform: scale(1.05);
 }
+
+.theme-input {
+    margin: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.theme-input input {
+    padding: 10px;
+    font-size: 1rem;
+    margin-right: 10px;
+}
+
+.theme-input button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+}

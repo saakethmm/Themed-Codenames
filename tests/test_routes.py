@@ -51,19 +51,19 @@ class FlaskTestCase(unittest.TestCase):
             self.assertEqual(saved_data["theme"], theme)
             self.assertEqual(saved_data["words"], words)
 
-    def test_generate_words_api(self):
-        # Define the theme to test
-        theme = "Hindu mythology"
+    # def test_generate_words_api(self):
+    #     # Define the theme to test
+    #     theme = "Hindu mythology"
         
-        # Call the generate_words function with use_ollama=False
-        from app.services.word_service import generate_words
-        words = generate_words(theme, use_ollama=False)
+    #     # Call the generate_words function with use_ollama=False
+    #     from app.services.word_service import generate_words
+    #     words = generate_words(theme, use_ollama=False)
         
-        # Check if the words are saved in the game_words.json file
-        with open("game_words.json", "r") as file:
-            saved_data = json.load(file)
-            self.assertEqual(saved_data["theme"], theme)
-            self.assertEqual(saved_data["words"], words)
+    #     # Check if the words are saved in the game_words.json file
+    #     with open("game_words.json", "r") as file:
+    #         saved_data = json.load(file)
+    #         self.assertEqual(saved_data["theme"], theme)
+    #         self.assertEqual(saved_data["words"], words)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,14 +1,18 @@
+// Fixed player.js file
 import { hinduWords } from './hinduwords.js';
 
 // RANDOM SEED LOGIC
-
 const urlParams = new URLSearchParams(window.location.search);
-let seed = Math.floor(Math.random() * 10000); // Generate a random seed
-urlParams.set('seed', seed);
+let seed = urlParams.get('seed');
 
-// Update the URL without reloading the page
-const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-window.history.replaceState(null, '', newUrl);
+if (!seed) {
+    seed = Math.floor(Math.random() * 10000); // Generate a random seed
+    urlParams.set('seed', seed);
+
+    // Update the URL without reloading the page
+    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+}
 
 console.log(`Seed used: ${seed}`); // Log the seed
 
@@ -25,52 +29,102 @@ function seededRandom(seed) {
 
 // Seeded shuffle function
 function shuffle(array, seed) {
-    let currentIndex = array.length;
+    let currentSeed = seed;
+    const result = [...array]; // Create a copy of the array
+    let currentIndex = result.length;
     let randomIndex;
 
     while (currentIndex !== 0) {
         // Generate a new seeded random index
-        randomIndex = Math.floor(seededRandom(seed) * currentIndex);
+        randomIndex = Math.floor(seededRandom(currentSeed) * currentIndex);
         currentIndex--;
 
         // Swap with the current element
-        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        [result[currentIndex], result[randomIndex]] = [result[randomIndex], result[currentIndex]];
 
         // Update the seed for the next iteration
-        seed++;
+        currentSeed++;
     }
-    return array;
+    return result;
 }
 
 // Function to fetch words from the backend
 async function fetchWords(theme) {
-    const response = await fetch('/get_words', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ theme: theme })
-    });
+    try {
+        const response = await fetch('/get_words', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ theme: theme })
+        });
 
-    if (response.ok) {
-        const data = await response.json();
-        return data.words;
-    } else {
-        console.error('Failed to fetch words');
-        return [];
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Fetched words:", data);
+            
+            // Convert comma-separated string to array if needed
+            if (typeof data.words === 'string') {
+                return data.words.split(',').map(word => word.trim());
+            }
+            return data.words;
+        } else {
+            console.error('Failed to fetch words from server');
+            return hinduWords; // Fallback to default words
+        }
+    } catch (error) {
+        console.error('Error fetching words:', error);
+        return hinduWords; // Fallback to default words
     }
 }
+
+// Initialize scores and game state
+let scores = {
+    'rgba(255, 0, 0, 0.7)': 0, // Red
+    'rgba(0, 0, 255, 0.7)': 0, // Blue
+};
+let currentTurn = 'Red'; // Start with red's turn
 
 // Function to populate the board with words
 function populateBoard(words) {
     const boardElement = document.getElementById('board');
     boardElement.innerHTML = ''; // Clear existing board
 
-    const shuffledWords = shuffle(words.slice(), seed).slice(0, 25); // Shuffle words
-    const colors = shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')
-        .concat(Array(8).fill('rgba(0, 0, 255, 0.7)'))
-        .concat(Array(7).fill('rgba(128, 128, 128, 0.7)'))
-        .concat(['black']), seed); // Shuffle colors
+    // Make sure we have an array of words
+    let wordArray = words;
+    if (typeof words === 'string') {
+        wordArray = words.split(',').map(word => word.trim());
+    }
+    
+    console.log("Words for board:", wordArray);
+    
+    // Make sure we have enough words
+    if (wordArray.length < 25) {
+        console.warn("Not enough words, padding with default words");
+        wordArray = [...wordArray, ...hinduWords.slice(0, 25 - wordArray.length)];
+    }
+
+    const shuffledWords = shuffle(wordArray, seed).slice(0, 25); // Shuffle words
+    const colors = shuffle(
+        Array(9).fill('rgba(255, 0, 0, 0.7)') // 9 red cards
+        .concat(Array(8).fill('rgba(0, 0, 255, 0.7)')) // 8 blue cards
+        .concat(Array(7).fill('rgba(128, 128, 128, 0.7)')) // 7 neutral cards
+        .concat(['black']), // 1 bomb card
+        seed
+    ); // Shuffle colors
+
+    // Reset scores
+    scores = {
+        'rgba(255, 0, 0, 0.7)': 0, // Red
+        'rgba(0, 0, 255, 0.7)': 0, // Blue
+    };
+    
+    // Update score display
+    updateScore(0, 0);
+    
+    // Reset current turn to Red
+    currentTurn = 'Red';
+    updateTurnDisplay();
 
     shuffledWords.forEach((word, index) => {
         const card = document.createElement('div');
@@ -85,9 +139,12 @@ function populateBoard(words) {
                 card.classList.add('revealed');
 
                 // Update score
-                if (color !== 'rgba(128, 128, 128, 0.7)') { // Ignore neutral color
+                if (color === 'rgba(255, 0, 0, 0.7)') {
                     scores[color]++;
-                    updateScore(scores[textColor['blue']], scores[textColor['red']]);
+                    updateScore(scores['rgba(0, 0, 255, 0.7)'], scores[color]);
+                } else if (color === 'rgba(0, 0, 255, 0.7)') {
+                    scores[color]++;
+                    updateScore(scores[color], scores['rgba(255, 0, 0, 0.7)']);
                 }
 
                 // Switch turns if necessary
@@ -96,11 +153,11 @@ function populateBoard(words) {
                     (currentTurn === 'Blue' && (color === 'rgba(255, 0, 0, 0.7)' || color === 'rgba(128, 128, 128, 0.7)'))
                 ) {
                     currentTurn = currentTurn === 'Red' ? 'Blue' : 'Red';
-                    console.log(`Turn changed to: ${currentTurn.toUpperCase()}`); // Log the new turn
+                    console.log(`Turn changed to: ${currentTurn}`);
                     updateTurnDisplay();
                 }
 
-                // If the bomb (dark tile) is clicked, add special handling
+                // If the bomb (black tile) is clicked, add special handling
                 if (color === 'black') {
                     card.style.color = 'white'; // Make text visible on dark background
                     const winningTeam = currentTurn === 'Red' ? 'Blue' : 'Red';
@@ -108,11 +165,10 @@ function populateBoard(words) {
                     // Immediately trigger the other team winning
                     const scoreboardElement = document.querySelector('.scoreboard');
                     scoreboardElement.innerHTML = `
-                        <span style="font-size: 3rem; color: ${winningTeam}; font-weight: bold;">
+                        <span style="font-size: 3rem; color: ${winningTeam.toLowerCase()}; font-weight: bold;">
                             ${winningTeam} Wins!
                         </span>
                     `;
-                    return; // Stop further execution
                 }
             }
         });
@@ -121,30 +177,13 @@ function populateBoard(words) {
     });
 }
 
-// Initialize scores
-let scores = {
-    'rgba(255, 0, 0, 0.7)': 0, // Red
-    'rgba(0, 0, 255, 0.7)': 0, // Blue
-    'rgba(128, 128, 128, 0.7)': 0, // Neutral
-    'black': 0 // Bomb
-};
-
-// Dictionary to map team colors to their respective scores
-let textColor = {
-    'red': 'rgba(255, 0, 0, 0.7)',
-    'blue': 'rgba(0, 0, 255, 0.7)'
-}
-
 // Update turn display
-let currentTurn = 'Red'; // Start with red's turn
-
 function updateTurnDisplay() {
     const turnElement = document.getElementById('turn');
     if (turnElement) {
         turnElement.innerHTML = `
-            <span style="color: ${currentTurn}; font-weight: bold;">${currentTurn}'s Turn</span>
+            <span style="color: ${currentTurn.toLowerCase()}; font-weight: bold;">${currentTurn}'s Turn</span>
         `;
-        console.log(`Current turn: ${currentTurn.toUpperCase()}`);
     } else {
         console.error('Turn element not found!');
     }
@@ -152,42 +191,64 @@ function updateTurnDisplay() {
 
 // Function to update the scoreboard
 function updateScore(blue, red) {
-    blueScore = blue;
-    redScore = red;
-
-    const scoreboardElement = document.querySelector('.scoreboard');
+    const scoreElement = document.getElementById('score');
+    if (!scoreElement) {
+        console.error('Score element not found!');
+        return;
+    }
     
     // Check if blue or red wins
-    if (blueScore >= 8) {
-        scoreboardElement.innerHTML = `<span style="font-size: 3rem; color: blue; font-weight: bold;">Blue Wins!</span>`;
+    if (blue >= 8) {
+        document.querySelector('.scoreboard').innerHTML = `
+            <span style="font-size: 3rem; color: blue; font-weight: bold;">Blue Wins!</span>
+        `;
         return;
-    } else if (redScore >= 9) {
-        scoreboardElement.innerHTML = `<span style="font-size: 3rem; color: red; font-weight: bold;">Red Wins!</span>`;
+    } else if (red >= 9) {
+        document.querySelector('.scoreboard').innerHTML = `
+            <span style="font-size: 3rem; color: red; font-weight: bold;">Red Wins!</span>
+        `;
         return;
     }
 
     // Update score display
-    const scoreElement = document.getElementById('score');
     scoreElement.innerHTML = `
         <span style="color: red; font-weight: bold;">${red}</span> -
         <span style="color: blue; font-weight: bold;">${blue}</span>
     `;
 }
 
+// Initialize the game when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    updateScore(0, 0); // Initialize the scoreboard with 0-0
-    updateTurnDisplay(); // Initialize the turn display
+    console.log('DOM fully loaded');
+    
+    // Initialize the scoreboard
+    updateScore(0, 0);
+    updateTurnDisplay();
 
     // Handle theme submission
     const submitButton = document.getElementById('submit-theme');
-    submitButton.addEventListener('click', async () => {
-        const themeInput = document.getElementById('theme');
-        const theme = themeInput.value.trim();
-        if (theme) {
-            const words = await fetchWords(theme);
-            populateBoard(words);
-        } else {
-            alert('Please enter a theme');
-        }
-    });
+    
+    if (submitButton) {
+        console.log('Submit button found');
+        submitButton.addEventListener('click', async () => {
+            console.log('Submit button clicked');
+            const themeInput = document.getElementById('theme');
+            if (!themeInput) {
+                console.error('Theme input element not found!');
+                return;
+            }
+            
+            const theme = themeInput.value.trim();
+            console.log(`Theme entered: "${theme}"`);
+            
+            if (theme) {
+                const words = await fetchWords(theme);
+                populateBoard(words);
+            } else {
+                alert('Please enter a theme');
+            }
+        });
+    } else {
+        console.error('Submit button not found!');
+    }
 });

@@ -11,6 +11,10 @@ GAME_WORDS_FILE = "game_words.json"
 def index():
     return render_template('player.html')
 
+@main.route('/spymaster')
+def spymaster():
+    return render_template('spymaster.html')
+
 # route to handle POST requests to generate/retrieve words
 @main.route("/get_words", methods=["POST"])
 def get_words():

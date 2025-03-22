@@ -217,38 +217,85 @@ function updateScore(blue, red) {
     `;
 }
 
+// Update the toggle button to include the current seed and theme
+function updateToggleButton() {
+    const toggleButton = document.getElementById('view-toggle');
+    if (toggleButton) {
+        const currentHref = toggleButton.getAttribute('href').split('?')[0];
+        
+        // Get the theme from the input field or URL parameter
+        let theme = document.getElementById('theme').value.trim();
+        if (!theme) {
+            const urlParams = new URLSearchParams(window.location.search);
+            theme = urlParams.get('theme');
+        }
+        
+        let newUrl = `${currentHref}?seed=${seed}`;
+        if (theme) {
+            newUrl += `&theme=${encodeURIComponent(theme)}`;
+        }
+        
+        toggleButton.setAttribute('href', newUrl);
+    }
+}
+
 // Initialize the game when the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM fully loaded');
     
     // Initialize the scoreboard
-    updateScore(0, 0);
-    updateTurnDisplay();
+    updateScore(0, 0); // Initialize the scoreboard with 0-0
+    updateTurnDisplay(); // Initialize the turn display
+    updateToggleButton(); // Update the toggle button with the current seed
+
+    // Check if there's a theme parameter in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const theme = urlParams.get('theme');
+
+    if (theme) {
+        // Set the theme input value
+        const themeInput = document.getElementById('theme');
+        themeInput.value = theme;
+        
+        // Fetch words and populate board
+        const words = await fetchWords(theme);
+        populateBoard(words);
+        
+        // Show the turn indicator and toggle button
+        document.querySelector('.turn-indicator').style.display = 'block';
+        document.querySelector('.view-toggle').style.display = 'block';
+        
+        // Hide the theme input box
+        document.querySelector('.theme-input').style.display = 'none';
+    }
 
     // Handle theme submission
     const submitButton = document.getElementById('submit-theme');
-    
-    if (submitButton) {
-        console.log('Submit button found');
-        submitButton.addEventListener('click', async () => {
-            console.log('Submit button clicked');
-            const themeInput = document.getElementById('theme');
-            if (!themeInput) {
-                console.error('Theme input element not found!');
-                return;
-            }
+    submitButton.addEventListener('click', async () => {
+        const themeInput = document.getElementById('theme');
+        const theme = themeInput.value.trim();
+        if (theme) {
+            const words = await fetchWords(theme);
+            populateBoard(words);
             
-            const theme = themeInput.value.trim();
-            console.log(`Theme entered: "${theme}"`);
+            // Make sure the URL has our seed and theme
+            const currentUrlParams = new URLSearchParams(window.location.search);
+            currentUrlParams.set('seed', seed); // Ensure the seed is set
+            currentUrlParams.set('theme', theme); // Add the theme
+            const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
+            window.history.replaceState(null, '', newUrl);
             
-            if (theme) {
-                const words = await fetchWords(theme);
-                populateBoard(words);
-            } else {
-                alert('Please enter a theme');
-            }
-        });
-    } else {
-        console.error('Submit button not found!');
-    }
+            // Update the toggle button with the current seed and theme
+            updateToggleButton();
+            
+            // Show the turn indicator and toggle button
+            document.querySelector('.turn-indicator').style.display = 'block';
+            document.querySelector('.view-toggle').style.display = 'block';
+            
+            // Hide the theme input box
+            document.querySelector('.theme-input').style.display = 'none';
+        } else {
+            alert('Please enter a theme');
+        }
+    });
 });

@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <div class="scoreboard">
+        <div id="score">0-0</div>
+        <div id="turn" class="turn-indicator"></div>
+        <div class="view-toggle">
+            <a href="/" class="toggle-button" id="view-toggle">Switch to Player View</a>
+        </div>
+    </div>
     <div class="board" id="board"></div>
     <script type="module" src="{{ url_for('static', filename='js/spymaster.js') }}"></script>
 </body>

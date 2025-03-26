@@ -1,6 +1,6 @@
 # Themed Codenames
 
-Ever wanted to play Codenames but with any arbitrary theme? This tool helps you do exactly that.
+Ever wanted to play the classic Codenames game but with words from any arbitrary theme? This version helps you do exactly that, leveraging modern LLMs via ollama (local) or API calls to GPT-4o-mini to help generate the words. 
 
 ## Features
 
@@ -65,7 +65,7 @@ python run.py
     - **js/**: JavaScript files.
       - `player.js`: Player logic.
       - `spymaster.js`: Spymaster logic.
-      - `hinduwords.js`: Default words.
+      - `hinduwords.js`: Default words (original game).
   - **services/**: Service files.
     - `word_service.py`: Word generation logic.
   - `routes.py`: Flask routes.
@@ -74,7 +74,7 @@ python run.py
   - `test_routes.py`: Tests for routes.
 - `config.py`: Configuration classes.
 - `run.py`: Entry point to run the Flask application.
-- `game_words.json`: Stores generated words for the current game session.
+- `game_words.json`: Stores generated words for the all game sessions played so far.
 
 ## Testing
 

@@ -14,7 +14,7 @@ class FlaskTestCase(unittest.TestCase):
         theme = "Hindu mythology"
         
         # Make a POST request to the /get_words route
-        response = self.app.post('/get_words', json={"theme": theme})
+        response = self.app.get(f'/get_words?theme={theme}')
         
         # Print the response content for debugging
         print(response.data.decode())
@@ -34,8 +34,8 @@ class FlaskTestCase(unittest.TestCase):
         # Check if the words are saved in the game_words.json file
         with open("game_words.json", "r") as file:
             saved_data = json.load(file)
-            self.assertEqual(saved_data["theme"], theme)
-            self.assertEqual(saved_data["words"], data["words"])
+            self.assertIn(theme, saved_data)
+            self.assertEqual(saved_data[theme], data["words"])
 
     def test_generate_words_local(self):
         # Define the theme to test

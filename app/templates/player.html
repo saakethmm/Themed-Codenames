@@ -18,6 +18,10 @@
         <input type="text" id="theme" placeholder="Enter theme">
         <button id="submit-theme">Submit</button>
     </div>
+    <div class="progress-container" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+        <div class="progress-text" id="progress-text">Generating words...</div>
+    </div>
     <div class="board" id="board"></div>
     <script type="module" src="{{ url_for('static', filename='js/player.js') }}"></script>
 </body>

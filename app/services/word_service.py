@@ -2,6 +2,7 @@ import ollama
 import openai
 import json
 import re
+import random
 
 
 # 1. for myself: use ollama to generate words locally using model of choice (mistral-7b or llama3-8b) 
@@ -44,8 +45,19 @@ def comma_separated_list_from_numbered(words_str: str):
 
 def save_game_words(theme, words):
     """Save the generated words for the current game session."""
+    try:
+        with open(GAME_WORDS_FILE, "r") as file:
+            game_words = json.load(file)
+    except FileNotFoundError:
+        game_words = {}
+
+    if theme in game_words:
+        game_words[theme].extend(words)
+    else:
+        game_words[theme] = words
+
     with open(GAME_WORDS_FILE, "w") as file:
-        json.dump({"theme": theme, "words": words}, file, indent=4)
+        json.dump(game_words, file, indent=4)
 
 def generate_words_local(theme):
     """Generate words using local Ollama (for personal use)."""

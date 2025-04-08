@@ -106,14 +106,11 @@ async function initializeBoard() {
     });
 }
 
-// Update the toggle button to include the current seed
+// Update the toggle button to include the current seed and theme
 function updateToggleButton() {
     const toggleButton = document.getElementById('view-toggle');
     if (toggleButton) {
         const currentHref = toggleButton.getAttribute('href').split('?')[0];
-        // Get the theme parameter if it exists
-        const urlParams = new URLSearchParams(window.location.search);
-        const theme = urlParams.get('theme');
         
         let newUrl = `${currentHref}?seed=${seed}`;
         if (theme) {

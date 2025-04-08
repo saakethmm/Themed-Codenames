@@ -51,12 +51,8 @@ function shuffle(array, seed) {
 // Function to fetch words from the backend
 async function fetchWords(theme) {
     try {
-        const response = await fetch('/get_words', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ theme: theme })
+        const response = await fetch(`/get_words?theme=${encodeURIComponent(theme)}`, {
+            method: 'GET',
         });
 
         if (response.ok) {

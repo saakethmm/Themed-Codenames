@@ -392,6 +392,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleThemeSubmission() {
         const theme = themeInput.value.trim();
         if (theme) {
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressContainer.offsetHeight; // force reflow
+            await new Promise(resolve => setTimeout(resolve, 20));
+
+            let progress = 0;
+            const loadingInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += Math.random() * 10;
+                    progressBar.style.width = progress + '%';
+                }
+            }, 100);
+
             // Disable the submit button and theme input field, and change the button text
             submitButton.disabled = true;
             themeInput.disabled = true;
@@ -403,7 +418,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Populate the board and score
                 populateBoard(words);
-                updateScore(0, 0, true); // Initialize the scoreboard with score 
+
+                // Update progressbar
+                clearInterval(loadingInterval);
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 300);
+
+                // Initialize the scoreboard with score 
+                updateScore(0, 0, true); 
 
                 // Make sure the URL has our seed and theme
                 const currentUrlParams = new URLSearchParams(window.location.search);
@@ -423,6 +447,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 themeInputBox.style.display = 'none';
                 toggleBoardButtons(true);
             } catch (error) {
+                clearInterval(loadingInterval);
+                progressContainer.style.display = 'none';
+
                 console.error("Error during theme submission:", error);
                 alert("An error occurred while submitting the theme. Please try again.");
             } finally {

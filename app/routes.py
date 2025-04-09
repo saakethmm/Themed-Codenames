@@ -25,8 +25,13 @@ def get_words():
     try:
         with open(GAME_WORDS_FILE, "r") as file:
             data = json.load(file)
-            if theme in data: 
-                return jsonify(data[theme])  # Serve cached words
+            saved_theme = '_'.join(theme.lower().strip().split())
+            
+            # TODO: retrieve words as long as part before parantheses is the same
+            # print(data[saved_theme])
+            if saved_theme in data: 
+                # Wrap the cached words in the expected structure
+                return jsonify({"words": data[saved_theme]})
     except FileNotFoundError:
         pass
     except Exception as e:

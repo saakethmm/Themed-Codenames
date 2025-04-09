@@ -91,9 +91,9 @@ function populateBoard(words) {
     if (typeof words === 'string') {
         wordArray = words.split(',').map(word => word.trim());
     }
-    
+
     console.log("Words for board:", wordArray);
-    
+
     // Make sure we have enough words
     if (wordArray.length < 25) {
         console.warn("Not enough words, padding with default words");
@@ -114,10 +114,10 @@ function populateBoard(words) {
         'rgba(255, 0, 0, 0.7)': 0, // Red
         'rgba(0, 0, 255, 0.7)': 0, // Blue
     };
-    
+
     // Update score display
     updateScore(0, 0);
-    
+
     // Reset current turn to Red
     currentTurn = 'Red';
     updateTurnDisplay();
@@ -157,7 +157,7 @@ function populateBoard(words) {
                 if (color === 'black') {
                     card.style.color = 'white'; // Make text visible on dark background
                     const winningTeam = currentTurn === 'Red' ? 'Blue' : 'Red';
-                    
+
                     // Immediately trigger the other team winning
                     const scoreboardElement = document.querySelector('.scoreboard');
                     scoreboardElement.innerHTML = `
@@ -167,6 +167,60 @@ function populateBoard(words) {
                     `;
                 }
             }
+        });
+
+        // Add right-click event to show context menu
+        card.addEventListener('contextmenu', (event) => {
+            event.preventDefault(); // Prevent the default context menu
+
+            // Remove any existing custom context menu
+            const existingMenu = document.querySelector('.context-menu');
+            if (existingMenu) existingMenu.remove();
+
+            // Create a custom context menu
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.style.top = `${event.clientY}px`;
+            menu.style.left = `${event.clientX}px`;
+
+            // Add "Edit Card" option
+            const editOption = document.createElement('div');
+            editOption.className = 'context-menu-item';
+            editOption.innerText = 'Edit Card';
+            editOption.addEventListener('click', () => {
+                // Remove the context menu
+                menu.remove();
+
+                // Create an input field for editing
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = card.innerText;
+                input.className = 'card-input';
+
+                // Replace card text with input field
+                card.innerHTML = '';
+                card.appendChild(input);
+                input.focus();
+
+                // Save the new text when the user presses "Enter" or clicks outside
+                const saveText = () => {
+                    card.innerText = input.value.trim() || word; // Revert to original word if input is empty
+                    card.classList.remove('editing');
+                };
+
+                input.addEventListener('blur', saveText); // Save on blur
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        saveText();
+                    }
+                });
+            });
+
+            menu.appendChild(editOption);
+            document.body.appendChild(menu);
+
+            // Remove the context menu when clicking elsewhere
+            document.addEventListener('click', () => menu.remove(), { once: true });
         });
 
         boardElement.appendChild(card);
@@ -213,6 +267,16 @@ function updateScore(blue, red) {
     `;
 }
 
+// Function to update the page title
+function updateTitle(score) {
+    const titleElement = document.querySelector('title');
+    if (score) {
+        titleElement.textContent = `Score: ${score}`;9
+    } else {
+        titleElement.textContent = "Welcome to Themed Codenames!";
+    }
+}
+
 // Update the toggle button to include the current seed and theme
 function updateToggleButton() {
     const toggleButton = document.getElementById('view-toggle');
@@ -239,6 +303,9 @@ function updateToggleButton() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM fully loaded');
     
+    // Set the initial title
+    updateTitle();
+
     // Initialize the scoreboard
     updateScore(0, 0); // Initialize the scoreboard with 0-0
     updateTurnDisplay(); // Initialize the turn display
@@ -248,6 +315,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const theme = urlParams.get('theme');
 
+    const newThemeButton = document.querySelector('.new-theme');
+    const shuffleButton = document.querySelector('.shuffle');
+    const themeInputBox = document.querySelector('.theme-input');
+    const boardElement = document.querySelector('.board');
+
+    // Function to toggle visibility of the "New Theme?" and "🔄 Shuffle" buttons
+    function toggleBoardButtons(show) {
+        if (show) {
+            newThemeButton.style.display = 'block';
+            shuffleButton.style.display = 'block';
+        } else {
+            newThemeButton.style.display = 'none';
+            shuffleButton.style.display = 'none';
+        }
+    }
+
+    // Hide the "New Theme?" and "🔄 Shuffle" buttons by default
+    toggleBoardButtons(false);
+
     if (theme) {
         // Set the theme input value
         const themeInput = document.getElementById('theme');
@@ -256,42 +342,115 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch words and populate board
         const words = await fetchWords(theme);
         populateBoard(words);
-        
+
+        // Update the title with the score after the board is loaded
+        const scoreElement = document.getElementById('score');
+        if (scoreElement) {
+            updateTitle(scoreElement.textContent);
+        }
+
         // Show the turn indicator and toggle button
         document.querySelector('.turn-indicator').style.display = 'block';
         document.querySelector('.view-toggle').style.display = 'block';
         
-        // Hide the theme input box
-        document.querySelector('.theme-input').style.display = 'none';
+        // Hide the theme input box and show the "New Theme?" and "🔄 Shuffle" buttons
+        themeInputBox.style.display = 'none';
+        toggleBoardButtons(true);
     }
 
     // Handle theme submission
     const submitButton = document.getElementById('submit-theme');
-    submitButton.addEventListener('click', async () => {
-        const themeInput = document.getElementById('theme');
+    const themeInput = document.getElementById('theme');
+
+    async function handleThemeSubmission() {
         const theme = themeInput.value.trim();
         if (theme) {
-            const words = await fetchWords(theme);
-            populateBoard(words);
-            
-            // Make sure the URL has our seed and theme
-            const currentUrlParams = new URLSearchParams(window.location.search);
-            currentUrlParams.set('seed', seed); // Ensure the seed is set
-            currentUrlParams.set('theme', theme); // Add the theme
-            const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
-            window.history.replaceState(null, '', newUrl);
-            
-            // Update the toggle button with the current seed and theme
-            updateToggleButton();
-            
-            // Show the turn indicator and toggle button
-            document.querySelector('.turn-indicator').style.display = 'block';
-            document.querySelector('.view-toggle').style.display = 'block';
-            
-            // Hide the theme input box
-            document.querySelector('.theme-input').style.display = 'none';
+            // Disable the submit button and theme input field, and change the button text
+            submitButton.disabled = true;
+            themeInput.disabled = true;
+            submitButton.innerText = "Submitting...";
+
+            try {
+                // Start fetching words
+                const words = await fetchWords(theme);
+
+                // Populate the board
+                populateBoard(words);
+
+                // Make sure the URL has our seed and theme
+                const currentUrlParams = new URLSearchParams(window.location.search);
+                currentUrlParams.set('seed', seed); // Ensure the seed is set
+                currentUrlParams.set('theme', theme); // Add the theme
+                const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
+                window.history.replaceState(null, '', newUrl);
+
+                // Update the toggle button with the current seed and theme
+                updateToggleButton();
+
+                // Show the turn indicator and toggle button
+                document.querySelector('.turn-indicator').style.display = 'block';
+                document.querySelector('.view-toggle').style.display = 'block';
+
+                // Hide the theme input box and show the "New Theme?" and "🔄 Shuffle" buttons
+                themeInputBox.style.display = 'none';
+                toggleBoardButtons(true);
+            } catch (error) {
+                console.error("Error during theme submission:", error);
+                alert("An error occurred while submitting the theme. Please try again.");
+            } finally {
+                // Re-enable the submit button and theme input field, and reset the button text
+                submitButton.disabled = false;
+                themeInput.disabled = false;
+                submitButton.innerText = "Submit";
+            }
         } else {
             alert('Please enter a theme');
         }
+    }
+
+    // Add click event listener to the submit button
+    submitButton.addEventListener('click', handleThemeSubmission);
+
+    // Add keydown event listener to the theme input field for "Enter" key
+    themeInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Prevent the default form submission behavior
+            handleThemeSubmission();
+        }
+    });
+
+    // Add functionality to the "New Theme?" button
+    newThemeButton.addEventListener('click', (event) => {
+        event.preventDefault(); // Prevent default link behavior
+
+        // Show the theme input box
+        themeInputBox.style.display = 'flex';
+
+        // Hide the "New Theme?" and "🔄 Shuffle" buttons
+        toggleBoardButtons(false);
+
+        // Hide the board and other elements
+        boardElement.innerHTML = ''; // Clear the board
+        document.querySelector('.turn-indicator').style.display = 'none';
+        document.querySelector('.view-toggle').style.display = 'none';
+    });
+
+    // Add functionality to the "🔄 Shuffle" button
+    shuffleButton.addEventListener('click', async (event) => {
+        event.preventDefault(); // Prevent default link behavior
+
+        // Generate a new random seed
+        seed = Math.floor(Math.random() * 10000);
+
+        // Update the URL with the new seed
+        urlParams.set('seed', seed);
+        const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+
+        // Re-populate the board with the new seed
+        const words = await fetchWords(theme);
+        populateBoard(words);
+
+        console.log(`New seed used: ${seed}`); // Log the new seed
     });
 });

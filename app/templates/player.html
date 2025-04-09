@@ -13,14 +13,16 @@
         <div class="view-toggle" style="display: none;">
             <a href="/spymaster" class="toggle-button" id="view-toggle">Switch to Spymaster View</a>
         </div>
+        <div class="new-theme">
+            <a href="#" class="toggle-button" id="new-theme-button">New Theme?</a>
+        </div>
+        <div class="shuffle">
+            <a href="#" class="toggle-button" id="shuffle-button">🔄 Shuffle</a>
+        </div>
     </div>
     <div class="theme-input">
         <input type="text" id="theme" placeholder="Enter theme">
         <button id="submit-theme">Submit</button>
-    </div>
-    <div class="progress-container" id="progress-container">
-        <div class="progress-bar" id="progress-bar"></div>
-        <div class="progress-text" id="progress-text">Generating words...</div>
     </div>
     <div class="board" id="board"></div>
     <script type="module" src="{{ url_for('static', filename='js/player.js') }}"></script>

@@ -20,17 +20,17 @@ openai.api_key = "your_openai_api_key" # TODO: replace with my actual API key
 GAME_WORDS_FILE = "game_words.json"
 
 # Precomputed words database (load from a file)
-WORDS_DB_FILE = "precomputed_words.json"
-try:
-    with open(WORDS_DB_FILE, "r") as file:
-        WORDS_DB = json.load(file)
-except FileNotFoundError:
-    WORDS_DB = {}  # Initialize empty if file doesn't exist
+# WORDS_DB_FILE = "precomputed_words.json"
+# try:
+#     with open(WORDS_DB_FILE, "r") as file:
+#         WORDS_DB = json.load(file)
+# except FileNotFoundError:
+#     WORDS_DB = {}  # Initialize empty if file doesn't exist
 
-def save_precomputed_words():
-    """Save the updated word cache to the file."""
-    with open(WORDS_DB_FILE, "w") as file:
-        json.dump(WORDS_DB, file, indent=4)
+# def save_precomputed_words():
+#     """Save the updated word cache to the file."""
+#     with open(WORDS_DB_FILE, "w") as file:
+#         json.dump(WORDS_DB, file, indent=4)
 
 def comma_separated_list_from_numbered(words_str: str):
     words = []
@@ -43,7 +43,7 @@ def comma_separated_list_from_numbered(words_str: str):
     return ", ".join(words)
 
 
-def save_game_words(theme, words):
+def save_game_words(theme: str, words: list):
     """Save the generated words for the current game session."""
     try:
         with open(GAME_WORDS_FILE, "r") as file:
@@ -51,6 +51,7 @@ def save_game_words(theme, words):
     except FileNotFoundError:
         game_words = {}
 
+    theme = '_'.join(theme.lower().strip().split())
     if theme in game_words:
         game_words[theme].extend(words)
     else:
@@ -61,7 +62,7 @@ def save_game_words(theme, words):
 
 def generate_words_local(theme):
     """Generate words using local Ollama (for personal use)."""
-    prompt = f"Generate 40 different words related to {theme} as a numbered list. Don't include a header or footer:"
+    prompt = f"Generate 40 different words related to {theme} as a numbered list. No repeats. Don't include a header or footer:"
     response = ollama.chat(model="llama3.2:latest", messages=[{"role": "user", "content": prompt}])
     # Extract the words, removing only the list numbering pattern
     words_str = words = response["message"]["content"]
@@ -75,7 +76,7 @@ def generate_words_api(theme):
     if theme in WORDS_DB:
         words = random.sample(WORDS_DB[theme], 25)  # Shuffle precomputed list
     else:
-        prompt = f"Generate 40 different words or phrases related to {theme} as a numbered list. Don't include a header or footer:"
+        prompt = f"Generate 40 different words or phrases related to {theme} as a numbered list. No repeats. Don't include a header or footer:"
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],

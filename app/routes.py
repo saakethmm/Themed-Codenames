@@ -26,8 +26,9 @@ def get_words():
         with open(GAME_WORDS_FILE, "r") as file:
             data = json.load(file)
             saved_theme = '_'.join(theme.lower().strip().split())
-            
+
             # TODO: retrieve words as long as part before parantheses is the same
+            # TODO: use fuzzy matching logic (levenshtein distance or similar to match)
             # print(data[saved_theme])
             if saved_theme in data: 
                 # Wrap the cached words in the expected structure

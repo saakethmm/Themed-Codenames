@@ -80,6 +80,7 @@ let scores = {
     'rgba(0, 0, 255, 0.7)': 0, // Blue
 };
 let currentTurn = 'Red'; // Start with red's turn
+let gameEnded = false; // Add a gameEnded flag to track the game state
 
 // Function to populate the board with words
 function populateBoard(words) {
@@ -100,6 +101,7 @@ function populateBoard(words) {
         wordArray = [...wordArray, ...hinduWords.slice(0, 25 - wordArray.length)];
     }
 
+    // every time we populate, shuffle the words and colors
     const shuffledWords = shuffle(wordArray, seed).slice(0, 25); // Shuffle words
     const colors = shuffle(
         Array(9).fill('rgba(255, 0, 0, 0.7)') // 9 red cards
@@ -129,6 +131,8 @@ function populateBoard(words) {
 
         // Add click event to reveal color
         card.addEventListener('click', () => {
+            if (gameEnded) return; // Prevent clicks if the game has ended
+
             if (!card.classList.contains('revealed')) { // Avoid re-clicking
                 const color = colors[index];
                 card.style.backgroundColor = color;
@@ -137,10 +141,10 @@ function populateBoard(words) {
                 // Update score
                 if (color === 'rgba(255, 0, 0, 0.7)') {
                     scores[color]++;
-                    updateScore(scores['rgba(0, 0, 255, 0.7)'], scores[color]);
+                    updateScore(scores['rgba(0, 0, 255, 0.7)'], scores[color], true);
                 } else if (color === 'rgba(0, 0, 255, 0.7)') {
                     scores[color]++;
-                    updateScore(scores[color], scores['rgba(255, 0, 0, 0.7)']);
+                    updateScore(scores[color], scores['rgba(255, 0, 0, 0.7)'], true);
                 }
 
                 // Switch turns if necessary
@@ -150,7 +154,7 @@ function populateBoard(words) {
                 ) {
                     currentTurn = currentTurn === 'Red' ? 'Blue' : 'Red';
                     console.log(`Turn changed to: ${currentTurn}`);
-                    updateTurnDisplay();
+                    updateTurnDisplay(true);
                 }
 
                 // If the bomb (black tile) is clicked, add special handling
@@ -159,12 +163,14 @@ function populateBoard(words) {
                     const winningTeam = currentTurn === 'Red' ? 'Blue' : 'Red';
 
                     // Immediately trigger the other team winning
-                    const scoreboardElement = document.querySelector('.scoreboard');
-                    scoreboardElement.innerHTML = `
+                    document.getElementById('score').innerHTML = `
                         <span style="font-size: 3rem; color: ${winningTeam.toLowerCase()}; font-weight: bold;">
                             ${winningTeam} Wins!
                         </span>
                     `;
+                    updateTurnDisplay(false);
+                    gameEnded = true; // Set the gameEnded flag
+                    updateShuffleButton();
                 }
             }
         });
@@ -228,9 +234,14 @@ function populateBoard(words) {
 }
 
 // Update turn display
-function updateTurnDisplay() {
+function updateTurnDisplay(gameStarted = false) {
     const turnElement = document.getElementById('turn');
     if (turnElement) {
+        if (!gameStarted) {
+            turnElement.style.display = 'none';
+            return;
+        }
+        turnElement.style.display = 'block';
         turnElement.innerHTML = `
             <span style="color: ${currentTurn.toLowerCase()}; font-weight: bold;">${currentTurn}'s Turn</span>
         `;
@@ -240,42 +251,57 @@ function updateTurnDisplay() {
 }
 
 // Function to update the scoreboard
-function updateScore(blue, red) {
+function updateScore(blue, red, gameStarted = false) {
     const scoreElement = document.getElementById('score');
     if (!scoreElement) {
         console.error('Score element not found!');
         return;
     }
-    
-    // Check if blue or red wins
-    if (blue >= 8) {
-        document.querySelector('.scoreboard').innerHTML = `
-            <span style="font-size: 3rem; color: blue; font-weight: bold;">Blue Wins!</span>
+
+    if (!gameStarted) {
+        scoreElement.innerHTML = `
+            <span style="font-size: 2rem; font-weight: bold;">Themed Codenames Generator!</span>
         `;
-        return;
-    } else if (red >= 9) {
-        document.querySelector('.scoreboard').innerHTML = `
-            <span style="font-size: 3rem; color: red; font-weight: bold;">Red Wins!</span>
-        `;
+        updateShuffleButton(); // update button text
         return;
     }
 
-    // Update score display
+    if (blue >= 8) {
+        scoreElement.innerHTML = `<span style="font-size: 3rem; color: blue; font-weight: bold;">Blue Wins!</span>`;
+        updateTurnDisplay(false);
+        gameEnded = true;
+        updateShuffleButton(); // set button text to "Play Again?"
+        return;
+    } else if (red >= 9) {
+        scoreElement.innerHTML = `<span style="font-size: 3rem; color: red; font-weight: bold;">Red Wins!</span>`;
+        gameEnded = true;
+        updateShuffleButton(); // set button text to "Play Again?"
+        return;
+    }
+
     scoreElement.innerHTML = `
         <span style="color: red; font-weight: bold;">${red}</span> -
         <span style="color: blue; font-weight: bold;">${blue}</span>
     `;
+    updateShuffleButton(); // update button text
 }
 
-// Function to update the page title
-function updateTitle(score) {
-    const titleElement = document.querySelector('title');
-    if (score) {
-        titleElement.textContent = `Score: ${score}`;9
-    } else {
-        titleElement.textContent = "Welcome to Themed Codenames!";
-    }
+// Add this helper function after declaring shuffleButton
+function updateShuffleButton() {
+    const shuffleButton = document.getElementById('shuffle-button');
+    if (!shuffleButton) return;
+    shuffleButton.textContent = gameEnded ? "🔄 Play Again?" : "🔄 Shuffle";
 }
+
+// // Function to update the page title
+// function updateTitle(score) {
+//     const titleElement = document.querySelector('title');
+//     if (score) {
+//         titleElement.textContent = `Score: ${score}`;9
+//     } else {
+//         titleElement.textContent = "Welcome to Themed Codenames!";
+//     }
+// }
 
 // Update the toggle button to include the current seed and theme
 function updateToggleButton() {
@@ -303,12 +329,12 @@ function updateToggleButton() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM fully loaded');
     
-    // Set the initial title
-    updateTitle();
+    // // Set the initial title
+    // updateTitle();
 
     // Initialize the scoreboard
-    updateScore(0, 0); // Initialize the scoreboard with 0-0
-    updateTurnDisplay(); // Initialize the turn display
+    updateScore(0, 0, false); // Initialize the scoreboard with title
+    updateTurnDisplay(false); // Initialize the turn display
     updateToggleButton(); // Update the toggle button with the current seed
 
     // Check if there's a theme parameter in the URL
@@ -344,13 +370,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateBoard(words);
 
         // Update the title with the score after the board is loaded
-        const scoreElement = document.getElementById('score');
-        if (scoreElement) {
-            updateTitle(scoreElement.textContent);
-        }
+        updateScore(0, 0, true); // Initialize the scoreboard with score 
+        // const scoreElement = document.getElementById('score');
+        // if (scoreElement) {
+        //     updateTitle(scoreElement.textContent);
+        // }
 
         // Show the turn indicator and toggle button
-        document.querySelector('.turn-indicator').style.display = 'block';
+        updateTurnDisplay(true);
         document.querySelector('.view-toggle').style.display = 'block';
         
         // Hide the theme input box and show the "New Theme?" and "🔄 Shuffle" buttons
@@ -374,8 +401,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Start fetching words
                 const words = await fetchWords(theme);
 
-                // Populate the board
+                // Populate the board and score
                 populateBoard(words);
+                updateScore(0, 0, true); // Initialize the scoreboard with score 
 
                 // Make sure the URL has our seed and theme
                 const currentUrlParams = new URLSearchParams(window.location.search);
@@ -388,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateToggleButton();
 
                 // Show the turn indicator and toggle button
-                document.querySelector('.turn-indicator').style.display = 'block';
+                updateTurnDisplay(true);
                 document.querySelector('.view-toggle').style.display = 'block';
 
                 // Hide the theme input box and show the "New Theme?" and "🔄 Shuffle" buttons
@@ -414,7 +442,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Add keydown event listener to the theme input field for "Enter" key
     themeInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
-            event.preventDefault(); // Prevent the default form submission behavior
             handleThemeSubmission();
         }
     });
@@ -423,11 +450,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     newThemeButton.addEventListener('click', (event) => {
         event.preventDefault(); // Prevent default link behavior
 
+        // Display confirmation message
+        if (!confirm("Are you sure? This will return to the theme submission page.")) {
+            return;
+        }
+
+        // Reset the URL to remove query parameters
+        window.history.replaceState(null, '', window.location.pathname);
+
         // Show the theme input box
         themeInputBox.style.display = 'flex';
 
         // Hide the "New Theme?" and "🔄 Shuffle" buttons
         toggleBoardButtons(false);
+
+        // Display updated title in place of score
+        updateScore(0, 0, false);
 
         // Hide the board and other elements
         boardElement.innerHTML = ''; // Clear the board
@@ -437,7 +475,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Add functionality to the "🔄 Shuffle" button
     shuffleButton.addEventListener('click', async (event) => {
-        event.preventDefault(); // Prevent default link behavior
+        // Display confirmation message
+        if (!confirm("Are you sure? This will reset the game.")) {
+            return;
+        }
+        
+        if (gameEnded) {
+            gameEnded = false;
+        }
 
         // Generate a new random seed
         seed = Math.floor(Math.random() * 10000);
@@ -450,6 +495,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Re-populate the board with the new seed
         const words = await fetchWords(theme);
         populateBoard(words);
+
+        // Display updated title in place of score
+        updateScore(0, 0, true);
+        updateTurnDisplay(true);
+        updateShuffleButton(); // set back to default text  
 
         console.log(`New seed used: ${seed}`); // Log the new seed
     });

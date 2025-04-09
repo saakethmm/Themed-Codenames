@@ -35,7 +35,8 @@ body {
 
 .turn-indicator {
     position: absolute;
-    right: 150px; /* Adjust to move closer/farther from the right edge */
+    right: 400px; /* Adjust to move closer/farther from the right edge */
+    top: 70%;
     font-size: 1rem;
     font-weight: bold;
     min-width: 150px;

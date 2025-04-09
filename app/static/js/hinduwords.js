@@ -1,5 +1,4 @@
 // hinduWords.js
-// TODO: This is where I store themed words from an LLM
 
 export const hinduWords = [
     // Deities and Mythological Figures

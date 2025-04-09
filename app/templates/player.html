@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hindu Themed Codenames Board</title>
+    <title>Themed Codenames Board</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="scoreboard">
         <div id="score">0-0</div>
-        <div id="turn" class="turn-indicator" style="display: none;"></div>
+        <div id="turn" class="turn-indicator"></div>
         <div class="view-toggle" style="display: none;">
             <a href="/spymaster" class="toggle-button" id="view-toggle">Switch to Spymaster View</a>
         </div>
         <div class="new-theme">
-            <a href="#" class="toggle-button" id="new-theme-button">New Theme?</a>
+            <a href="#" class="toggle-button" id="new-theme-button">🆕 New Theme?</a>
         </div>
         <div class="shuffle">
             <a href="#" class="toggle-button" id="shuffle-button">🔄 Shuffle</a>

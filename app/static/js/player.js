@@ -290,18 +290,8 @@ function updateScore(blue, red, gameStarted = false) {
 function updateShuffleButton() {
     const shuffleButton = document.getElementById('shuffle-button');
     if (!shuffleButton) return;
-    shuffleButton.textContent = gameEnded ? "🔄 Play Again?" : "🔄 Shuffle";
+    shuffleButton.textContent = gameEnded ? "▶️ Play Again?" : "🔀 Shuffle";
 }
-
-// // Function to update the page title
-// function updateTitle(score) {
-//     const titleElement = document.querySelector('title');
-//     if (score) {
-//         titleElement.textContent = `Score: ${score}`;9
-//     } else {
-//         titleElement.textContent = "Welcome to Themed Codenames!";
-//     }
-// }
 
 // Update the toggle button to include the current seed and theme
 function updateToggleButton() {
@@ -348,13 +338,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Function to toggle visibility of the "New Theme?" and "🔄 Shuffle" buttons
     function toggleBoardButtons(show) {
-        if (show) {
-            newThemeButton.style.display = 'block';
-            shuffleButton.style.display = 'block';
-        } else {
-            newThemeButton.style.display = 'none';
-            shuffleButton.style.display = 'none';
-        }
+        const display = show ? 'block' : 'none';
+        newThemeButton.style.display = display;
+        shuffleButton.style.display = display;
+        const helpButton = document.querySelector('.help');
+        if (helpButton) helpButton.style.display = display;
     }
 
     // Hide the "New Theme?" and "🔄 Shuffle" buttons by default
@@ -529,5 +517,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateShuffleButton(); // set back to default text  
 
         console.log(`New seed used: ${seed}`); // Log the new seed
+    });
+
+    // Help Modal Functionality
+    const helpButton = document.getElementById('help-button');
+    const helpModal = document.getElementById('help-modal');
+    const helpModalClose = document.getElementById('help-modal-close');
+
+    if(helpButton) {
+        helpButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            helpModal.style.display = 'block';
+        });
+    }
+
+    if(helpModalClose) {
+        helpModalClose.addEventListener('click', () => {
+            helpModal.style.display = 'none';
+        });
+    }
+    
+    // Close the modal when clicking outside of the modal content
+    window.addEventListener('click', (event) => {
+        if (event.target === helpModal) {
+            helpModal.style.display = 'none';
+        }
     });
 });

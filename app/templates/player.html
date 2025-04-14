@@ -17,7 +17,10 @@
             <a href="#" class="toggle-button" id="new-theme-button">🆕 New Theme?</a>
         </div>
         <div class="shuffle">
-            <a href="#" class="toggle-button" id="shuffle-button">🔄 Shuffle</a>
+            <a href="#" class="toggle-button" id="shuffle-button">🔀 Shuffle</a>
+        </div>
+        <div class="help">
+            <a href="#" class="toggle-button help-button" id="help-button">❓</a>
         </div>
     </div>
     <div class="theme-input">
@@ -28,6 +31,26 @@
         <div class="progress-bar" id="progress-bar"></div>
     </div>
     <div class="board" id="board"></div>
+
+    <!-- Help Modal Popup -->
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="help-modal-close">&times;</span>
+            <h2>How to Play</h2>
+            <p>
+                Themed Codenames is a variant of the classic Codenames game, where the game words are customized by entering a theme of your choice!
+                Each team (Red and Blue) takes turns to click cards (right click on a card to edit it). Revealing a card will show its assigned color:
+            </p>
+            <ul>
+                <li><strong>Red or Blue cards:</strong> Increases the respective team's score (and the turn continues).</li>
+                <li><strong>Neutral cards:</strong> Ends the turn without reward.</li>
+                <li><strong>Bomb card:</strong> Instantly loses the game for the team that selected it.</li>
+            </ul>
+            <p>
+                Use the "Shuffle" button to restart the game with a new board, or "New Theme?" to return to the theme submission page.
+            </p>
+        </div>
+    </div>
     <script type="module" src="{{ url_for('static', filename='js/player.js') }}"></script>
 </body>
 </html>

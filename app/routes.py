@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, render_template, current_app
 import json
 from .services.word_service import generate_words
+from fuzzywuzzy import fuzz
 
 main = Blueprint('main', __name__)
 
@@ -27,12 +28,16 @@ def get_words():
             data = json.load(file)
             saved_theme = '_'.join(theme.lower().strip().split())
 
-            # TODO: retrieve words as long as part before parantheses is the same
-            # TODO: use fuzzy matching logic (levenshtein distance or similar to match)
-            # print(data[saved_theme])
-            if saved_theme in data: 
-                # Wrap the cached words in the expected structure
-                return jsonify({"words": data[saved_theme]})
+            best_match = None
+            best_score = 0
+            for existing_theme in data.keys():
+                score = fuzz.ratio(saved_theme, existing_theme)
+                if score > best_score:
+                    best_score = score
+                    best_match = existing_theme
+
+            if best_score >= 85 and best_match:
+                return jsonify({"words": data[best_match]})
     except FileNotFoundError:
         pass
     except Exception as e:

@@ -13,6 +13,48 @@ if (!seed) {
     const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
     window.history.replaceState(null, '', newUrl);
 }
+async function saveBoardToBackend(theme, seed, usedWords, usedColors, revealed) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const usedBoardId = boardId || new URLSearchParams(window.location.search).get('board_id') || null;
+
+    try {
+        const response = await fetch('/save_board', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                board_id: usedBoardId,
+                theme,
+                seed,
+                words: usedWords,
+                colors: usedColors,
+                revealed
+            })
+        });
+
+        const result = await response.json();
+        const board_id = result.board_id;
+        boardId = board_id;
+
+        const currentUrlParams = new URLSearchParams(window.location.search);
+        if (!currentUrlParams.get("board_id")) {
+            currentUrlParams.set("board_id", board_id);
+            const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
+            window.history.replaceState(null, '', newUrl);
+        }
+
+        // Update toggle link to include board_id
+        const toggleButton = document.getElementById('view-toggle');
+        if (toggleButton) {
+            const baseHref = toggleButton.getAttribute('href').split('?')[0];
+            toggleButton.setAttribute('href', `${baseHref}?board_id=${board_id}`);
+        }
+
+        return board_id;
+    } catch (error) {
+        console.error("Failed to save board to backend:", error);
+        return null;
+    }
+}
 
 console.log(`Seed used: ${seed}`); // Log the seed
 
@@ -81,6 +123,8 @@ let scores = {
 };
 let currentTurn = 'Red'; // Start with red's turn
 let gameEnded = false; // Add a gameEnded flag to track the game state
+let revealed = {};
+let boardId = null;
 
 // Function to populate the board with words
 function populateBoard(words) {
@@ -129,6 +173,12 @@ function populateBoard(words) {
         card.className = 'card';
         card.innerText = word;
 
+        // across users maintain revealed state
+        if (revealed[index]) {
+            card.style.backgroundColor = colors[index];
+            card.classList.add('revealed');
+        }
+
         // Add click event to reveal color
         card.addEventListener('click', () => {
             if (gameEnded) return; // Prevent clicks if the game has ended
@@ -137,6 +187,8 @@ function populateBoard(words) {
                 const color = colors[index];
                 card.style.backgroundColor = color;
                 card.classList.add('revealed');
+                revealed[index] = true;
+                saveBoardToBackend(theme, seed, shuffledWords, colors, revealed);
 
                 // Update score
                 if (color === 'rgba(255, 0, 0, 0.7)') {
@@ -231,6 +283,8 @@ function populateBoard(words) {
 
         boardElement.appendChild(card);
     });
+
+    return { words: shuffledWords, colors: colors };
 }
 
 // Update turn display
@@ -260,7 +314,7 @@ function updateScore(blue, red, gameStarted = false) {
 
     if (!gameStarted) {
         scoreElement.innerHTML = `
-            <span style="font-size: 2rem; font-weight: bold;">Themed Codenames Generator!</span>
+            <span style="font-size: 2rem; font-weight: bold;">🔎 Themed Codenames Generator</span>
         `;
         updateShuffleButton(); // update button text
         return;
@@ -286,7 +340,6 @@ function updateScore(blue, red, gameStarted = false) {
     updateShuffleButton(); // update button text
 }
 
-// Add this helper function after declaring shuffleButton
 function updateShuffleButton() {
     const shuffleButton = document.getElementById('shuffle-button');
     if (!shuffleButton) return;
@@ -298,29 +351,49 @@ function updateToggleButton() {
     const toggleButton = document.getElementById('view-toggle');
     if (toggleButton) {
         const currentHref = toggleButton.getAttribute('href').split('?')[0];
-        
-        // Get the theme from the input field or URL parameter
+ 
         let theme = document.getElementById('theme').value.trim();
+        const urlParams = new URLSearchParams(window.location.search);
+        const boardId = urlParams.get('board_id');
+        const seed = urlParams.get('seed') || '';
+ 
         if (!theme) {
-            const urlParams = new URLSearchParams(window.location.search);
-            theme = urlParams.get('theme');
+            theme = urlParams.get('theme') || '';
         }
-        
+ 
         let newUrl = `${currentHref}?seed=${seed}`;
         if (theme) {
             newUrl += `&theme=${encodeURIComponent(theme)}`;
         }
-        
+        if (boardId) {
+            newUrl += `&board_id=${boardId}`;
+        }
+ 
         toggleButton.setAttribute('href', newUrl);
     }
+}
+
+function updateCurrentUrl(board_id) {
+    const currentUrlParams = new URLSearchParams(window.location.search);
+    currentUrlParams.set('seed', seed);
+    const themeInput = document.getElementById('theme');
+    if (themeInput) {
+        const theme = themeInput.value.trim();
+        if (theme) {
+            currentUrlParams.set('theme', theme);
+        }
+    }
+    if (board_id) {
+        currentUrlParams.set('board_id', board_id);
+    }
+    const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+    console.log("Updated URL:", newUrl);
 }
 
 // Initialize the game when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM fully loaded');
-    
-    // // Set the initial title
-    // updateTitle();
 
     // Initialize the scoreboard
     updateScore(0, 0, false); // Initialize the scoreboard with title
@@ -336,7 +409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const themeInputBox = document.querySelector('.theme-input');
     const boardElement = document.querySelector('.board');
 
-    // Function to toggle visibility of the "New Theme?" and "🔄 Shuffle" buttons
+    // Function to toggle visibility of the "New Theme?" and "Shuffle" buttons
     function toggleBoardButtons(show) {
         const display = show ? 'block' : 'none';
         newThemeButton.style.display = display;
@@ -345,7 +418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (helpButton) helpButton.style.display = display;
     }
 
-    // Hide the "New Theme?" and "🔄 Shuffle" buttons by default
+    // Hide the "New Theme?" and "Shuffle" buttons by default
     toggleBoardButtons(false);
 
     if (theme) {
@@ -355,7 +428,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Fetch words and populate board
         const words = await fetchWords(theme);
-        populateBoard(words);
+        const { words: usedWords, colors: usedColors } = populateBoard(words);
+        const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
+        updateCurrentUrl(board_id);
 
         // Update the title with the score after the board is loaded
         updateScore(0, 0, true); // Initialize the scoreboard with score 
@@ -405,7 +480,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const words = await fetchWords(theme);
 
                 // Populate the board and score
-                populateBoard(words);
+                const { words: usedWords, colors: usedColors } = populateBoard(words);
+                const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
+                updateToggleButton();
 
                 // Update progressbar
                 clearInterval(loadingInterval);
@@ -418,13 +495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateScore(0, 0, true); 
 
                 // Make sure the URL has our seed and theme
-                const currentUrlParams = new URLSearchParams(window.location.search);
-                currentUrlParams.set('seed', seed); // Ensure the seed is set
-                currentUrlParams.set('theme', theme); // Add the theme
-                const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
-                window.history.replaceState(null, '', newUrl);
-
-                // Update the toggle button with the current seed and theme
+                updateCurrentUrl(board_id);
                 updateToggleButton();
 
                 // Show the turn indicator and toggle button
@@ -488,7 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('.view-toggle').style.display = 'none';
     });
 
-    // Add functionality to the "🔄 Shuffle" button
+    // Add functionality to the "Shuffle" button
     shuffleButton.addEventListener('click', async (event) => {
         // Display confirmation message
         if (!confirm("Are you sure? This will reset the game.")) {
@@ -509,7 +580,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Re-populate the board with the new seed
         const words = await fetchWords(theme);
-        populateBoard(words);
+        const { words: usedWords, colors: usedColors } = populateBoard(words);
+        const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
+
+        // update url
+        updateCurrentUrl(board_id);
 
         // Display updated title in place of score
         updateScore(0, 0, true);

@@ -74,17 +74,47 @@ async function fetchWords(theme) {
 
 async function initializeBoard() {
     let boardWords;
-    
-    // If theme is provided in URL, fetch those words
-    if (theme) {
-        const fetchedWords = await fetchWords(theme);
-        boardWords = shuffle(fetchedWords, seed).slice(0, 25); // Shuffle words
-    } else {
-        // Otherwise use default words
-        boardWords = shuffle(hinduWords.slice(), seed).slice(0, 25); // Shuffle words
+    let colors;
+    const boardId = urlParams.get('board_id');
+    if (boardId) {
+        try {
+            const response = await fetch(`/get_board?board_id=${boardId}`);
+            if (response.ok) {
+                const data = await response.json();
+                boardWords = data.words;
+                seed = data.seed;
+                theme = data.theme;
+                colors = data.colors;
+
+                const currentUrlParams = new URLSearchParams(window.location.search);
+                currentUrlParams.set('theme', theme);
+                currentUrlParams.set('seed', seed);
+                const boardId = urlParams.get('board_id');
+                if (boardId) {
+                    currentUrlParams.delete('board_id');
+                    currentUrlParams.append('board_id', boardId);
+                }
+                const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
+                window.history.replaceState(null, '', newUrl);
+                console.log("Loaded board from board_id:", boardId);
+            } else {
+                console.error("Board not found for ID:", boardId);
+            }
+        } catch (error) {
+            console.error("Error fetching board:", error);
+        }
     }
 
-    const colors = shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')
+    if (!boardWords) {
+        if (theme) {
+            const fetchedWords = await fetchWords(theme);
+            boardWords = shuffle(fetchedWords, seed).slice(0, 25); // Shuffle words
+        } else {
+            boardWords = shuffle(hinduWords.slice(), seed).slice(0, 25); // Shuffle words
+        }
+    }
+
+    colors = colors || shuffle(Array(9).fill('rgba(255, 0, 0, 0.7)')
         .concat(Array(8).fill('rgba(0, 0, 255, 0.7)'))
         .concat(Array(7).fill('rgba(128, 128, 128, 0.7)'))
         .concat(['black']), seed); // Shuffle colors
@@ -111,12 +141,17 @@ function updateToggleButton() {
     const toggleButton = document.getElementById('view-toggle');
     if (toggleButton) {
         const currentHref = toggleButton.getAttribute('href').split('?')[0];
-        
+
         let newUrl = `${currentHref}?seed=${seed}`;
         if (theme) {
             newUrl += `&theme=${encodeURIComponent(theme)}`;
         }
-        
+
+        const boardId = urlParams.get('board_id');
+        if (boardId) {
+            newUrl += `&board_id=${boardId}`;
+        }
+
         toggleButton.setAttribute('href', newUrl);
     }
 }

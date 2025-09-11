@@ -1,6 +1,10 @@
 // Fixed player.js file
 import { hinduWords } from './hinduwords.js';
 
+// TODO: shuffle is done twice (once after button and then also after switching back to player view) - optimize this
+// TODO: when shuffling, the theme also sometimes arbitrarily changes, weirdly shifts to [object Object] sometimes
+// TODO: right clicking on card doesn't persist across switching views (very easy to also accidentally click on it)
+
 // RANDOM SEED LOGIC
 const urlParams = new URLSearchParams(window.location.search);
 let seed = urlParams.get('seed');
@@ -125,6 +129,7 @@ let currentTurn = 'Red'; // Start with red's turn
 let gameEnded = false; // Add a gameEnded flag to track the game state
 let revealed = {};
 let boardId = null;
+let currentWords = []; // Store current words on the board
 
 // Function to populate the board with words
 function populateBoard(words) {
@@ -147,6 +152,9 @@ function populateBoard(words) {
 
     // every time we populate, shuffle the words and colors
     const shuffledWords = shuffle(wordArray, seed).slice(0, 25); // Shuffle words
+    
+    // Store current words for future shuffles
+    currentWords = [...shuffledWords];
     const colors = shuffle(
         Array(9).fill('rgba(255, 0, 0, 0.7)') // 9 red cards
         .concat(Array(8).fill('rgba(0, 0, 255, 0.7)')) // 8 blue cards
@@ -573,14 +581,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Generate a new random seed
         seed = Math.floor(Math.random() * 10000);
 
+        // Reset revealed state
+        revealed = {};
+
         // Update the URL with the new seed
         urlParams.set('seed', seed);
         const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
         window.history.replaceState(null, '', newUrl);
 
-        // Re-populate the board with the new seed
-        const words = await fetchWords(theme);
-        const { words: usedWords, colors: usedColors } = populateBoard(words);
+        // Re-populate the board with the same words but new seed
+        const { words: usedWords, colors: usedColors } = populateBoard(currentWords);
         const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
 
         // update url

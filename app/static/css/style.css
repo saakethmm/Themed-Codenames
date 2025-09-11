@@ -84,13 +84,28 @@ body {
     margin: 20px;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    gap: 15px;
 }
 
-.theme-input input {
-    padding: 10px;
+.theme-input textarea {
+    padding: 15px;
     font-size: 1rem;
     margin-right: 10px;
+    width: 400px;
+    min-height: 80px;
+    max-height: 200px;
+    resize: vertical;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.theme-input textarea:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
 }
 
 .theme-input button {

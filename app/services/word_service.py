@@ -62,7 +62,7 @@ def save_game_words(theme: str, words: list):
 
 def generate_words_local(theme):
     """Generate words using local Ollama (for personal use)."""
-    prompt = f"Generate 40 different words related to {theme} as a numbered list. No repeats. Don't include a header or footer:"
+    prompt = f"Generate 40 different words/phrases on the theme: '{theme}' as a numbered list. No repeats. Don't include a header or footer:"
     response = ollama.chat(model="llama3.2:latest", messages=[{"role": "user", "content": prompt}])
     # Extract the words, removing only the list numbering pattern
     words_str = words = response["message"]["content"]

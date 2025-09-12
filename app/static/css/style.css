@@ -210,6 +210,15 @@ body {
     display: none; 
 }
 
+/* Undo button container */
+.undo {
+    position: absolute;
+    left: 340px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none; 
+}
+
 /* Help button styling */
 .help .help-button {
     background-color: rgb(188, 188, 188);

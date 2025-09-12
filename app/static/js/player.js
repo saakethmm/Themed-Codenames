@@ -1,550 +1,237 @@
-// Fixed player.js file
-import { hinduWords } from './hinduwords.js';
+import { GameState } from './gameState.js';
+import { UIManager } from './uiManager.js';
+import { Board } from './board.js';
+import { API } from './api.js';
+import { Utils } from './utils.js';
 
-// TODO: shuffle is done twice (once after button and then also after switching back to player view) - optimize this
-// TODO: when shuffling, the theme also sometimes arbitrarily changes, weirdly shifts to [object Object] sometimes
-// TODO: right clicking on card doesn't persist across switching views (very easy to also accidentally click on it)
+class CodeNamesGame {
+    constructor() {
+        this.gameState = new GameState();
+        this.ui = new UIManager(this.gameState);
+        this.board = new Board(this.gameState, this.ui, API);
+        this.theme = null;
+        this.seed = null;
+        
+        this.initializeGame();
+    }
 
-// RANDOM SEED LOGIC
-const urlParams = new URLSearchParams(window.location.search);
-let seed = urlParams.get('seed');
+    async initializeGame() {
+        console.log('DOM fully loaded');
 
-if (!seed) {
-    seed = Math.floor(Math.random() * 10000); // Generate a random seed
-    urlParams.set('seed', seed);
+        // Initialize URL parameters
+        const urlParams = Utils.getUrlParams();
+        this.seed = urlParams.get('seed') || Utils.generateSeed();
+        this.theme = urlParams.get('theme');
+        const existingBoardId = urlParams.get('board_id');
 
-    // Update the URL without reloading the page
-    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-    window.history.replaceState(null, '', newUrl);
-}
-async function saveBoardToBackend(theme, seed, usedWords, usedColors, revealed) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const usedBoardId = boardId || new URLSearchParams(window.location.search).get('board_id') || null;
-
-    try {
-        const response = await fetch('/save_board', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                board_id: usedBoardId,
-                theme,
-                seed,
-                words: usedWords,
-                colors: usedColors,
-                revealed
-            })
-        });
-
-        const result = await response.json();
-        const board_id = result.board_id;
-        boardId = board_id;
-
-        const currentUrlParams = new URLSearchParams(window.location.search);
-        if (!currentUrlParams.get("board_id")) {
-            currentUrlParams.set("board_id", board_id);
-            const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
+        // Update URL if seed was generated
+        if (!urlParams.get('seed')) {
+            urlParams.set('seed', this.seed);
+            const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
             window.history.replaceState(null, '', newUrl);
         }
 
-        // Update toggle link to include board_id
-        const toggleButton = document.getElementById('view-toggle');
-        if (toggleButton) {
-            const baseHref = toggleButton.getAttribute('href').split('?')[0];
-            toggleButton.setAttribute('href', `${baseHref}?board_id=${board_id}`);
+        console.log(`Seed used: ${this.seed}`);
+
+        // Initialize the scoreboard and UI
+        this.ui.updateScore(0, 0, false);
+        this.ui.updateTurnDisplay(false);
+        this.ui.updateToggleButton(this.seed, this.theme, this.gameState.boardId);
+
+        this.setupEventListeners();
+
+        // Load game if theme is provided
+        if (this.theme) {
+            await this.loadGame(existingBoardId);
         }
-
-        return board_id;
-    } catch (error) {
-        console.error("Failed to save board to backend:", error);
-        return null;
     }
-}
 
-console.log(`Seed used: ${seed}`); // Log the seed
-
-/* ---------------------------------------------------------------- */
-
-// Seeded random number generator
-function seededRandom(seed) {
-    let m = 0x80000000; // 2**31
-    let a = 1103515245;
-    let c = 12345;
-    seed = (seed * a + c) % m;
-    return seed / (m - 1);
-}
-
-// Seeded shuffle function
-function shuffle(array, seed) {
-    let currentSeed = seed;
-    const result = [...array]; // Create a copy of the array
-    let currentIndex = result.length;
-    let randomIndex;
-
-    while (currentIndex !== 0) {
-        // Generate a new seeded random index
-        randomIndex = Math.floor(seededRandom(currentSeed) * currentIndex);
-        currentIndex--;
-
-        // Swap with the current element
-        [result[currentIndex], result[randomIndex]] = [result[randomIndex], result[currentIndex]];
-
-        // Update the seed for the next iteration
-        currentSeed++;
-    }
-    return result;
-}
-
-// Function to fetch words from the backend
-async function fetchWords(theme) {
-    try {
-        const response = await fetch(`/get_words?theme=${encodeURIComponent(theme)}`, {
-            method: 'GET',
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Fetched words:", data);
+    async loadGame(existingBoardId) {
+        try {
+            const themeInput = document.getElementById('theme');
+            themeInput.value = this.theme;
             
-            // Convert comma-separated string to array if needed
-            if (typeof data.words === 'string') {
-                return data.words.split(',').map(word => word.trim());
+            let words, usedWords, usedColors, boardId;
+            
+            // Check if we have an existing board to load
+            if (existingBoardId) {
+                try {
+                    const boardData = await API.loadBoard(existingBoardId);
+                    
+                    // Load existing board state
+                    this.gameState.loadState(boardData);
+                    
+                    const result = this.board.populateBoard(boardData.words, this.seed, false);
+                    usedWords = result.words;
+                    usedColors = result.colors;
+                    boardId = existingBoardId;
+                    
+                    // Restore UI to match loaded state
+                    this.ui.restoreUIState();
+                    
+                    console.log("Loaded existing board:", existingBoardId);
+                } catch (error) {
+                    console.error("Failed to load existing board, creating new one:", error);
+                    words = await API.fetchWords(this.theme);
+                    const result = this.board.populateBoard(words, this.seed, true);
+                    usedWords = result.words;
+                    usedColors = result.colors;
+                    boardId = await API.saveBoard(this.gameState, this.theme, this.seed, null);
+                }
+            } else {
+                // Create new board
+                words = await API.fetchWords(this.theme);
+                const result = this.board.populateBoard(words, this.seed, true);
+                usedWords = result.words;
+                usedColors = result.colors;
+                boardId = await API.saveBoard(this.gameState, this.theme, this.seed, null);
             }
-            return data.words;
-        } else {
-            console.error('Failed to fetch words from server');
-            return hinduWords; // Fallback to default words
-        }
-    } catch (error) {
-        console.error('Error fetching words:', error);
-        return hinduWords; // Fallback to default words
-    }
-}
+            
+            this.gameState.boardId = boardId;
+            Utils.updateCurrentUrl(this.seed, this.theme, boardId);
 
-// Initialize scores and game state
-let scores = {
-    'rgba(255, 0, 0, 0.7)': 0, // Red
-    'rgba(0, 0, 255, 0.7)': 0, // Blue
-};
-let currentTurn = 'Red'; // Start with red's turn
-let gameEnded = false; // Add a gameEnded flag to track the game state
-let revealed = {};
-let boardId = null;
-let currentWords = []; // Store current words on the board
-
-// Function to populate the board with words
-function populateBoard(words) {
-    const boardElement = document.getElementById('board');
-    boardElement.innerHTML = ''; // Clear existing board
-
-    // Make sure we have an array of words
-    let wordArray = words;
-    if (typeof words === 'string') {
-        wordArray = words.split(',').map(word => word.trim());
-    }
-
-    console.log("Words for board:", wordArray);
-
-    // Make sure we have enough words
-    if (wordArray.length < 25) {
-        console.warn("Not enough words, padding with default words");
-        wordArray = [...wordArray, ...hinduWords.slice(0, 25 - wordArray.length)];
-    }
-
-    // every time we populate, shuffle the words and colors
-    const shuffledWords = shuffle(wordArray, seed).slice(0, 25); // Shuffle words
-    
-    // Store current words for future shuffles
-    currentWords = [...shuffledWords];
-    const colors = shuffle(
-        Array(9).fill('rgba(255, 0, 0, 0.7)') // 9 red cards
-        .concat(Array(8).fill('rgba(0, 0, 255, 0.7)')) // 8 blue cards
-        .concat(Array(7).fill('rgba(128, 128, 128, 0.7)')) // 7 neutral cards
-        .concat(['black']), // 1 bomb card
-        seed
-    ); // Shuffle colors
-
-    // Reset scores
-    scores = {
-        'rgba(255, 0, 0, 0.7)': 0, // Red
-        'rgba(0, 0, 255, 0.7)': 0, // Blue
-    };
-
-    // Update score display
-    updateScore(0, 0);
-
-    // Reset current turn to Red
-    currentTurn = 'Red';
-    updateTurnDisplay();
-
-    shuffledWords.forEach((word, index) => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerText = word;
-
-        // across users maintain revealed state
-        if (revealed[index]) {
-            card.style.backgroundColor = colors[index];
-            card.classList.add('revealed');
-        }
-
-        // Add click event to reveal color
-        card.addEventListener('click', () => {
-            if (gameEnded) return; // Prevent clicks if the game has ended
-
-            if (!card.classList.contains('revealed')) { // Avoid re-clicking
-                const color = colors[index];
-                card.style.backgroundColor = color;
-                card.classList.add('revealed');
-                revealed[index] = true;
-                saveBoardToBackend(theme, seed, shuffledWords, colors, revealed);
-
-                // Update score
-                if (color === 'rgba(255, 0, 0, 0.7)') {
-                    scores[color]++;
-                    updateScore(scores['rgba(0, 0, 255, 0.7)'], scores[color], true);
-                } else if (color === 'rgba(0, 0, 255, 0.7)') {
-                    scores[color]++;
-                    updateScore(scores[color], scores['rgba(255, 0, 0, 0.7)'], true);
-                }
-
-                // Switch turns if necessary
-                if (
-                    (currentTurn === 'Red' && (color === 'rgba(0, 0, 255, 0.7)' || color === 'rgba(128, 128, 128, 0.7)')) ||
-                    (currentTurn === 'Blue' && (color === 'rgba(255, 0, 0, 0.7)' || color === 'rgba(128, 128, 128, 0.7)'))
-                ) {
-                    currentTurn = currentTurn === 'Red' ? 'Blue' : 'Red';
-                    console.log(`Turn changed to: ${currentTurn}`);
-                    updateTurnDisplay(true);
-                }
-
-                // If the bomb (black tile) is clicked, add special handling
-                if (color === 'black') {
-                    card.style.color = 'white'; // Make text visible on dark background
-                    const winningTeam = currentTurn === 'Red' ? 'Blue' : 'Red';
-
-                    // Immediately trigger the other team winning
-                    document.getElementById('score').innerHTML = `
-                        <span style="font-size: 3rem; color: ${winningTeam.toLowerCase()}; font-weight: bold;">
-                            ${winningTeam} Wins!
-                        </span>
-                    `;
-                    updateTurnDisplay(false);
-                    gameEnded = true; // Set the gameEnded flag
-                    updateShuffleButton();
-                }
+            // Update the title with the score after the board is loaded
+            if (!existingBoardId) {
+                this.ui.updateScore(0, 0, true);
             }
-        });
 
-        // Add right-click event to show context menu
-        card.addEventListener('contextmenu', (event) => {
-            event.preventDefault(); // Prevent the default context menu
+            // Show the turn indicator and toggle button
+            this.ui.updateTurnDisplay(true);
+            document.querySelector('.view-toggle').style.display = 'block';
+            
+            // Hide theme input and show game buttons
+            this.showGameUI();
+        } catch (error) {
+            console.error("Failed to load theme:", error);
+            this.ui.showErrorPopup(
+                error.title || 'Failed to Load Theme',
+                error.userMessage || `Unable to fetch words for theme "${this.theme}". Please check your internet connection and try again.`
+            );
+        }
+    }
 
-            // Remove any existing custom context menu
-            const existingMenu = document.querySelector('.context-menu');
-            if (existingMenu) existingMenu.remove();
+    showGameUI() {
+        document.querySelector('.theme-input').style.display = 'none';
+        this.ui.toggleBoardButtons(true);
+    }
 
-            // Create a custom context menu
-            const menu = document.createElement('div');
-            menu.className = 'context-menu';
-            menu.style.top = `${event.clientY}px`;
-            menu.style.left = `${event.clientX}px`;
+    showThemeInput() {
+        document.querySelector('.theme-input').style.display = 'flex';
+        this.ui.toggleBoardButtons(false);
+        document.querySelector('.board').innerHTML = '';
+        document.querySelector('.turn-indicator').style.display = 'none';
+        document.querySelector('.view-toggle').style.display = 'none';
+    }
 
-            // Add "Edit Card" option
-            const editOption = document.createElement('div');
-            editOption.className = 'context-menu-item';
-            editOption.innerText = 'Edit Card';
-            editOption.addEventListener('click', () => {
-                // Remove the context menu
-                menu.remove();
-
-                // Create an input field for editing
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = card.innerText;
-                input.className = 'card-input';
-
-                // Replace card text with input field
-                card.innerHTML = '';
-                card.appendChild(input);
-                input.focus();
-
-                // Save the new text when the user presses "Enter" or clicks outside
-                const saveText = () => {
-                    card.innerText = input.value.trim() || word; // Revert to original word if input is empty
-                    card.classList.remove('editing');
-                };
-
-                input.addEventListener('blur', saveText); // Save on blur
-                input.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter') {
-                        saveText();
-                    }
-                });
-            });
-
-            menu.appendChild(editOption);
-            document.body.appendChild(menu);
-
-            // Remove the context menu when clicking elsewhere
-            document.addEventListener('click', () => menu.remove(), { once: true });
-        });
-
-        boardElement.appendChild(card);
-    });
-
-    return { words: shuffledWords, colors: colors };
-}
-
-// Update turn display
-function updateTurnDisplay(gameStarted = false) {
-    const turnElement = document.getElementById('turn');
-    if (turnElement) {
-        if (!gameStarted) {
-            turnElement.style.display = 'none';
+    async handleThemeSubmission() {
+        const themeInput = document.getElementById('theme');
+        const theme = themeInput.value.trim();
+        
+        if (!theme) {
+            alert('Please enter a theme');
             return;
         }
-        turnElement.style.display = 'block';
-        turnElement.innerHTML = `
-            <span style="color: ${currentTurn.toLowerCase()}; font-weight: bold;">${currentTurn}'s Turn</span>
-        `;
-    } else {
-        console.error('Turn element not found!');
-    }
-}
 
-// Function to update the scoreboard
-function updateScore(blue, red, gameStarted = false) {
-    const scoreElement = document.getElementById('score');
-    if (!scoreElement) {
-        console.error('Score element not found!');
-        return;
-    }
+        const submitButton = document.getElementById('submit-theme');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
 
-    if (!gameStarted) {
-        scoreElement.innerHTML = `
-            <span style="font-size: 2rem; font-weight: bold;">🔎 Themed Codenames Generator</span>
-        `;
-        updateShuffleButton(); // update button text
-        return;
-    }
+        // Show progress bar
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressContainer.offsetHeight;
+        await Utils.delay(20);
 
-    if (blue >= 8) {
-        scoreElement.innerHTML = `<span style="font-size: 3rem; color: blue; font-weight: bold;">Blue Wins!</span>`;
-        updateTurnDisplay(false);
-        gameEnded = true;
-        updateShuffleButton(); // set button text to "Play Again?"
-        return;
-    } else if (red >= 9) {
-        scoreElement.innerHTML = `<span style="font-size: 3rem; color: red; font-weight: bold;">Red Wins!</span>`;
-        gameEnded = true;
-        updateShuffleButton(); // set button text to "Play Again?"
-        return;
-    }
-
-    scoreElement.innerHTML = `
-        <span style="color: red; font-weight: bold;">${red}</span> -
-        <span style="color: blue; font-weight: bold;">${blue}</span>
-    `;
-    updateShuffleButton(); // update button text
-}
-
-function updateShuffleButton() {
-    const shuffleButton = document.getElementById('shuffle-button');
-    if (!shuffleButton) return;
-    shuffleButton.textContent = gameEnded ? "▶️ Play Again?" : "🔀 Shuffle";
-}
-
-// Update the toggle button to include the current seed and theme
-function updateToggleButton() {
-    const toggleButton = document.getElementById('view-toggle');
-    if (toggleButton) {
-        const currentHref = toggleButton.getAttribute('href').split('?')[0];
- 
-        let theme = document.getElementById('theme').value.trim();
-        const urlParams = new URLSearchParams(window.location.search);
-        const boardId = urlParams.get('board_id');
-        const seed = urlParams.get('seed') || '';
- 
-        if (!theme) {
-            theme = urlParams.get('theme') || '';
-        }
- 
-        let newUrl = `${currentHref}?seed=${seed}`;
-        if (theme) {
-            newUrl += `&theme=${encodeURIComponent(theme)}`;
-        }
-        if (boardId) {
-            newUrl += `&board_id=${boardId}`;
-        }
- 
-        toggleButton.setAttribute('href', newUrl);
-    }
-}
-
-function updateCurrentUrl(board_id) {
-    const currentUrlParams = new URLSearchParams(window.location.search);
-    currentUrlParams.set('seed', seed);
-    const themeInput = document.getElementById('theme');
-    if (themeInput) {
-        const theme = themeInput.value.trim();
-        if (theme) {
-            currentUrlParams.set('theme', theme);
-        }
-    }
-    if (board_id) {
-        currentUrlParams.set('board_id', board_id);
-    }
-    const newUrl = `${window.location.pathname}?${currentUrlParams.toString()}`;
-    window.history.replaceState(null, '', newUrl);
-    console.log("Updated URL:", newUrl);
-}
-
-// Initialize the game when the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM fully loaded');
-
-    // Initialize the scoreboard
-    updateScore(0, 0, false); // Initialize the scoreboard with title
-    updateTurnDisplay(false); // Initialize the turn display
-    updateToggleButton(); // Update the toggle button with the current seed
-
-    // Check if there's a theme parameter in the URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const theme = urlParams.get('theme');
-
-    const newThemeButton = document.querySelector('.new-theme');
-    const shuffleButton = document.querySelector('.shuffle');
-    const themeInputBox = document.querySelector('.theme-input');
-    const boardElement = document.querySelector('.board');
-
-    // Function to toggle visibility of the "New Theme?" and "Shuffle" buttons
-    function toggleBoardButtons(show) {
-        const display = show ? 'block' : 'none';
-        newThemeButton.style.display = display;
-        shuffleButton.style.display = display;
-        const helpButton = document.querySelector('.help');
-        if (helpButton) helpButton.style.display = display;
-    }
-
-    // Hide the "New Theme?" and "Shuffle" buttons by default
-    toggleBoardButtons(false);
-
-    if (theme) {
-        // Set the theme input value
-        const themeInput = document.getElementById('theme');
-        themeInput.value = theme;
-        
-        // Fetch words and populate board
-        const words = await fetchWords(theme);
-        const { words: usedWords, colors: usedColors } = populateBoard(words);
-        const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
-        updateCurrentUrl(board_id);
-
-        // Update the title with the score after the board is loaded
-        updateScore(0, 0, true); // Initialize the scoreboard with score 
-        // const scoreElement = document.getElementById('score');
-        // if (scoreElement) {
-        //     updateTitle(scoreElement.textContent);
-        // }
-
-        // Show the turn indicator and toggle button
-        updateTurnDisplay(true);
-        document.querySelector('.view-toggle').style.display = 'block';
-        
-        // Hide the theme input box and show the "New Theme?" and "🔄 Shuffle" buttons
-        themeInputBox.style.display = 'none';
-        toggleBoardButtons(true);
-    }
-
-    // Handle theme submission
-    const submitButton = document.getElementById('submit-theme');
-    const themeInput = document.getElementById('theme');
-
-    async function handleThemeSubmission() {
-        const theme = themeInput.value.trim();
-        if (theme) {
-            const progressContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('progress-bar');
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
-            progressContainer.offsetHeight; // force reflow
-            await new Promise(resolve => setTimeout(resolve, 20));
-
-            let progress = 0;
-            const loadingInterval = setInterval(() => {
-                if (progress < 90) {
-                    progress += Math.random() * 10;
-                    progressBar.style.width = progress + '%';
-                }
-            }, 100);
-
-            // Disable the submit button and theme input field, and change the button text
-            submitButton.disabled = true;
-            themeInput.disabled = true;
-            submitButton.innerText = "Submitting...";
-
-            try {
-                // Start fetching words
-                const words = await fetchWords(theme);
-
-                // Populate the board and score
-                const { words: usedWords, colors: usedColors } = populateBoard(words);
-                const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
-                updateToggleButton();
-
-                // Update progressbar
-                clearInterval(loadingInterval);
-                progressBar.style.width = '100%';
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                }, 300);
-
-                // Initialize the scoreboard with score 
-                updateScore(0, 0, true); 
-
-                // Make sure the URL has our seed and theme
-                updateCurrentUrl(board_id);
-                updateToggleButton();
-
-                // Show the turn indicator and toggle button
-                updateTurnDisplay(true);
-                document.querySelector('.view-toggle').style.display = 'block';
-
-                // Hide the theme input box and show the "New Theme?" and "🔄 Shuffle" buttons
-                themeInputBox.style.display = 'none';
-                toggleBoardButtons(true);
-            } catch (error) {
-                clearInterval(loadingInterval);
-                progressContainer.style.display = 'none';
-
-                console.error("Error during theme submission:", error);
-                alert("An error occurred while submitting the theme. Please try again.");
-            } finally {
-                // Re-enable the submit button and theme input field, and reset the button text
-                submitButton.disabled = false;
-                themeInput.disabled = false;
-                submitButton.innerText = "Submit";
+        let progress = 0;
+        const loadingInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.random() * 10;
+                progressBar.style.width = progress + '%';
             }
-        } else {
-            alert('Please enter a theme');
+        }, 100);
+
+        // Disable controls
+        submitButton.disabled = true;
+        themeInput.disabled = true;
+        submitButton.innerText = "Submitting...";
+
+        try {
+            this.theme = theme;
+            const words = await API.fetchWords(theme);
+            const result = this.board.populateBoard(words, this.seed, true);
+            const boardId = await API.saveBoard(this.gameState, theme, this.seed, null);
+            
+            this.gameState.boardId = boardId;
+            this.ui.updateToggleButton(this.seed, theme, boardId);
+
+            // Complete progress bar
+            clearInterval(loadingInterval);
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 300);
+
+            // Initialize the scoreboard with score 
+            this.ui.updateScore(0, 0, true);
+
+            // Update URL and UI
+            Utils.updateCurrentUrl(this.seed, theme, boardId);
+            this.ui.updateToggleButton(this.seed, theme, boardId);
+            this.ui.updateTurnDisplay(true);
+            document.querySelector('.view-toggle').style.display = 'block';
+
+            this.showGameUI();
+        } catch (error) {
+            clearInterval(loadingInterval);
+            progressContainer.style.display = 'none';
+            console.error("Error during theme submission:", error);
+            this.ui.showErrorPopup(
+                error.title || 'Error',
+                error.userMessage || 'An error occurred while processing your theme.'
+            );
+        } finally {
+            // Re-enable controls
+            submitButton.disabled = false;
+            themeInput.disabled = false;
+            submitButton.innerText = "Submit";
         }
     }
 
-    // Add click event listener to the submit button
-    submitButton.addEventListener('click', handleThemeSubmission);
-
-    // Add keydown event listener to the theme input field for "Enter" key
-    themeInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            handleThemeSubmission();
+    async handleShuffle() {
+        if (!confirm("Are you sure? This will reset the game.")) {
+            return;
         }
-    });
+        
+        this.gameState.gameEnded = false;
 
-    // Add functionality to the "New Theme?" button
-    newThemeButton.addEventListener('click', (event) => {
-        event.preventDefault(); // Prevent default link behavior
+        // Generate a new random seed
+        this.seed = Utils.generateSeed();
 
-        // Display confirmation message
+        // Reset game state
+        this.gameState.resetGame();
+
+        // Update the URL with the new seed
+        const urlParams = Utils.getUrlParams();
+        urlParams.set('seed', this.seed);
+        const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+
+        // Re-populate the board with new seed
+        const result = this.board.populateBoard(this.gameState.currentWords, this.seed, true);
+        const boardId = await API.saveBoard(this.gameState, this.theme, this.seed, null);
+
+        this.gameState.boardId = boardId;
+        Utils.updateCurrentUrl(this.seed, this.theme, boardId);
+
+        // Update UI
+        this.ui.updateScore(0, 0, true);
+        this.ui.updateTurnDisplay(true);
+        this.ui.updateShuffleButton();
+
+        console.log(`New seed used: ${this.seed}`);
+    }
+
+    handleNewTheme() {
         if (!confirm("Are you sure? This will return to the theme submission page.")) {
             return;
         }
@@ -552,80 +239,99 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Reset the URL to remove query parameters
         window.history.replaceState(null, '', window.location.pathname);
 
-        // Show the theme input box
-        themeInputBox.style.display = 'flex';
+        this.showThemeInput();
+        this.ui.updateScore(0, 0, false);
+    }
 
-        // Hide the "New Theme?" and "🔄 Shuffle" buttons
-        toggleBoardButtons(false);
-
-        // Display updated title in place of score
-        updateScore(0, 0, false);
-
-        // Hide the board and other elements
-        boardElement.innerHTML = ''; // Clear the board
-        document.querySelector('.turn-indicator').style.display = 'none';
-        document.querySelector('.view-toggle').style.display = 'none';
-    });
-
-    // Add functionality to the "Shuffle" button
-    shuffleButton.addEventListener('click', async (event) => {
-        // Display confirmation message
-        if (!confirm("Are you sure? This will reset the game.")) {
+    async handleUndo() {
+        if (this.gameState.gameStateHistory.length === 0) return;
+        
+        if (!confirm("Are you sure you want to undo the last move?")) {
             return;
         }
         
-        if (gameEnded) {
-            gameEnded = false;
+        if (this.gameState.undoLastMove()) {
+            this.ui.restoreUIState();
+            this.ui.updateUndoButton();
+            
+            // Save restored state to backend
+            await API.saveBoard(this.gameState, this.theme, this.seed, this.gameState.boardId);
         }
-
-        // Generate a new random seed
-        seed = Math.floor(Math.random() * 10000);
-
-        // Reset revealed state
-        revealed = {};
-
-        // Update the URL with the new seed
-        urlParams.set('seed', seed);
-        const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-        window.history.replaceState(null, '', newUrl);
-
-        // Re-populate the board with the same words but new seed
-        const { words: usedWords, colors: usedColors } = populateBoard(currentWords);
-        const board_id = await saveBoardToBackend(theme, seed, usedWords, usedColors, revealed);
-
-        // update url
-        updateCurrentUrl(board_id);
-
-        // Display updated title in place of score
-        updateScore(0, 0, true);
-        updateTurnDisplay(true);
-        updateShuffleButton(); // set back to default text  
-
-        console.log(`New seed used: ${seed}`); // Log the new seed
-    });
-
-    // Help Modal Functionality
-    const helpButton = document.getElementById('help-button');
-    const helpModal = document.getElementById('help-modal');
-    const helpModalClose = document.getElementById('help-modal-close');
-
-    if(helpButton) {
-        helpButton.addEventListener('click', (event) => {
-            event.preventDefault();
-            helpModal.style.display = 'block';
-        });
     }
 
-    if(helpModalClose) {
-        helpModalClose.addEventListener('click', () => {
-            helpModal.style.display = 'none';
+    setupEventListeners() {
+        // Theme submission
+        const submitButton = document.getElementById('submit-theme');
+        const themeInput = document.getElementById('theme');
+
+        submitButton.addEventListener('click', () => this.handleThemeSubmission());
+        themeInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                this.handleThemeSubmission();
+            }
+        });
+
+        // Game buttons
+        const newThemeButton = document.getElementById('new-theme-button');
+        const shuffleButton = document.getElementById('shuffle-button');
+        const undoButton = document.getElementById('undo-button');
+
+        if (newThemeButton) {
+            newThemeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.handleNewTheme();
+            });
+        }
+
+        if (shuffleButton) {
+            shuffleButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.handleShuffle();
+            });
+        }
+
+        if (undoButton) {
+            undoButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.handleUndo();
+            });
+        }
+
+        // Help modal
+        this.setupHelpModal();
+
+        // Initially hide game buttons
+        this.ui.toggleBoardButtons(false);
+    }
+
+    setupHelpModal() {
+        const helpButton = document.getElementById('help-button');
+        const helpModal = document.getElementById('help-modal');
+        const helpModalClose = document.getElementById('help-modal-close');
+
+        if (helpButton) {
+            helpButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                helpModal.style.display = 'block';
+            });
+        }
+
+        if (helpModalClose) {
+            helpModalClose.addEventListener('click', () => {
+                helpModal.style.display = 'none';
+            });
+        }
+        
+        // Close the modal when clicking outside of the modal content
+        window.addEventListener('click', (event) => {
+            if (event.target === helpModal) {
+                helpModal.style.display = 'none';
+            }
         });
     }
-    
-    // Close the modal when clicking outside of the modal content
-    window.addEventListener('click', (event) => {
-        if (event.target === helpModal) {
-            helpModal.style.display = 'none';
-        }
-    });
+}
+
+// Initialize the game when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new CodeNamesGame();
 });

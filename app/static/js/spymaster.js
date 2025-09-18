@@ -76,6 +76,7 @@ class SpymasterGame {
             throw error;
         }
     }
+
 }
 
 // Initialize the spymaster game when DOM is loaded

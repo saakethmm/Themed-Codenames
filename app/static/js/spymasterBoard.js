@@ -5,32 +5,37 @@ export class SpymasterBoard {
         this.api = api;
     }
 
-    // Seeded random number generator
+    // Seeded random number generator that returns both value and next seed
     seededRandom(seed) {
-        let m = 0x80000000; // 2**31
-        let a = 1103515245;
-        let c = 12345;
-        seed = (seed * a + c) % m;
-        return seed / (m - 1);
+        const m = 0x80000000; // 2**31
+        const a = 1103515245;
+        const c = 12345;
+        const nextSeed = (seed * a + c) % m;
+        return {
+            value: nextSeed / (m - 1),
+            nextSeed: nextSeed
+        };
     }
 
     // Seeded shuffle function
     shuffle(array, seed) {
-        let currentIndex = array.length;
-        let randomIndex;
+        let currentSeed = seed;
+        const result = [...array]; // Create a copy of the array
+        let currentIndex = result.length;
 
         while (currentIndex !== 0) {
             // Generate a new seeded random index
-            randomIndex = Math.floor(this.seededRandom(seed) * currentIndex);
+            const randomResult = this.seededRandom(currentSeed);
+            const randomIndex = Math.floor(randomResult.value * currentIndex);
             currentIndex--;
 
             // Swap with the current element
-            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            [result[currentIndex], result[randomIndex]] = [result[randomIndex], result[currentIndex]];
 
             // Update the seed for the next iteration
-            seed++;
+            currentSeed = randomResult.nextSeed;
         }
-        return array;
+        return result;
     }
 
     async initializeBoard(seed, theme, boardId) {
@@ -51,6 +56,7 @@ export class SpymasterBoard {
             }
         }
 
+        // Only generate new board if we don't have existing board data
         if (!boardWords) {
             if (theme) {
                 try {
@@ -65,13 +71,16 @@ export class SpymasterBoard {
             }
         }
 
-        colors = colors || this.shuffle(
-            Array(9).fill('rgba(255, 0, 0, 0.7)')
-            .concat(Array(8).fill('rgba(0, 0, 255, 0.7)'))
-            .concat(Array(7).fill('rgba(128, 128, 128, 0.7)'))
-            .concat(['black']), 
-            seed
-        ); // Shuffle colors
+        // Only generate new colors if we don't have existing colors
+        if (!colors) {
+            colors = this.shuffle(
+                Array(9).fill('rgba(255, 0, 0, 0.7)')
+                .concat(Array(8).fill('rgba(0, 0, 255, 0.7)'))
+                .concat(Array(7).fill('rgba(128, 128, 128, 0.7)'))
+                .concat(['black']), 
+                seed
+            ); // Shuffle colors
+        }
 
         return { words: boardWords, colors: colors };
     }

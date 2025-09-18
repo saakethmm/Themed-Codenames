@@ -102,7 +102,7 @@ export class UIManager {
         }
     }
 
-    updateScore(blue, red, gameStarted = false) {
+    updateScore(blue, red, gameStarted = false, winner = null) {
         const scoreElement = document.getElementById('score');
         if (!scoreElement) {
             console.error('Score element not found!');
@@ -117,14 +117,11 @@ export class UIManager {
             return;
         }
 
-        if (blue >= 8) {
-            scoreElement.innerHTML = `<span style="font-size: 3rem; color: blue; font-weight: bold;">Blue Wins!</span>`;
+        // If winner is explicitly provided (e.g., from bomb), display that winner
+        if (winner) {
+            const winnerColor = winner.toLowerCase();
+            scoreElement.innerHTML = `<span style="font-size: 3rem; color: ${winnerColor}; font-weight: bold;">${winner} Wins!</span>`;
             this.updateTurnDisplay(false);
-            this.gameState.gameEnded = true;
-            this.updateShuffleButton();
-            return;
-        } else if (red >= 9) {
-            scoreElement.innerHTML = `<span style="font-size: 3rem; color: red; font-weight: bold;">Red Wins!</span>`;
             this.gameState.gameEnded = true;
             this.updateShuffleButton();
             return;
@@ -154,6 +151,7 @@ export class UIManager {
         }
     }
 
+    // sets up new URL for the toggle button
     updateToggleButton(seed, theme, boardId) {
         const toggleButton = document.getElementById('view-toggle');
         if (toggleButton) {

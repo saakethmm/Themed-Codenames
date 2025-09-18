@@ -71,6 +71,7 @@ def generate_words_local(theme):
     save_game_words(theme, words)  # Save 40 words
     return words
 
+# TODO! 
 def generate_words_api(theme):
     """Generate words using OpenAI GPT-4o Mini API (for public users)."""
     if theme in WORDS_DB:

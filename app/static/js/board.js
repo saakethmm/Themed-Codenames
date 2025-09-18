@@ -7,13 +7,16 @@ export class Board {
         this.api = api;
     }
 
-    // Seeded random number generator
+    // Seeded random number generator that returns both value and next seed
     seededRandom(seed) {
-        let m = 0x80000000; // 2**31
-        let a = 1103515245;
-        let c = 12345;
-        seed = (seed * a + c) % m;
-        return seed / (m - 1);
+        const m = 0x80000000; // 2**31
+        const a = 1103515245;
+        const c = 12345;
+        const nextSeed = (seed * a + c) % m;
+        return {
+            value: nextSeed / (m - 1),
+            nextSeed: nextSeed
+        };
     }
 
     // Seeded shuffle function
@@ -21,18 +24,18 @@ export class Board {
         let currentSeed = seed;
         const result = [...array]; // Create a copy of the array
         let currentIndex = result.length;
-        let randomIndex;
 
         while (currentIndex !== 0) {
             // Generate a new seeded random index
-            randomIndex = Math.floor(this.seededRandom(currentSeed) * currentIndex);
+            const randomResult = this.seededRandom(currentSeed);
+            const randomIndex = Math.floor(randomResult.value * currentIndex);
             currentIndex--;
 
             // Swap with the current element
             [result[currentIndex], result[randomIndex]] = [result[randomIndex], result[currentIndex]];
 
             // Update the seed for the next iteration
-            currentSeed++;
+            currentSeed = randomResult.nextSeed;
         }
         return result;
     }
@@ -117,12 +120,11 @@ export class Board {
                     if (result.gameEnded) {
                         if (color === 'black') {
                             card.style.color = 'white'; // Make text visible on dark background
-                            document.getElementById('score').innerHTML = `
-                                <span style="font-size: 3rem; color: ${result.winner.toLowerCase()}; font-weight: bold;">
-                                    ${result.winner} Wins!
-                                </span>
-                            `;
                         }
+                        
+                        // Update score display for win condition (bomb or normal win)
+                        this.ui.updateScore(this.gameState.scores['rgba(0, 0, 255, 0.7)'], this.gameState.scores['rgba(255, 0, 0, 0.7)'], true, result.winner);
+                        
                         this.ui.updateTurnDisplay(false);
                         this.ui.updateShuffleButton();
                     } else {

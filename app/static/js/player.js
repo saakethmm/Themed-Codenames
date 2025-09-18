@@ -4,6 +4,9 @@ import { Board } from './board.js';
 import { API } from './api.js';
 import { Utils } from './utils.js';
 
+// TODO: update README, take screenshot of gameplay and publish (local version, mention online multiplayer version will be completed later)!
+// include note in the README to ask if any issues are found or if anyone would like to contribute to multiplayer version
+
 class CodeNamesGame {
     constructor() {
         this.gameState = new GameState();
@@ -202,33 +205,25 @@ class CodeNamesGame {
             return;
         }
         
-        this.gameState.gameEnded = false;
-
         // Generate a new random seed
-        this.seed = Utils.generateSeed();
+        const newSeed = Utils.generateSeed();
+        console.log(`Generated new seed: ${newSeed}`);
 
         // Reset game state
         this.gameState.resetGame();
 
-        // Update the URL with the new seed
-        const urlParams = Utils.getUrlParams();
-        urlParams.set('seed', this.seed);
-        const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-        window.history.replaceState(null, '', newUrl);
+        // Re-populate the board with new seed to generate new layout
+        const result = this.board.populateBoard(this.gameState.currentWords, newSeed, true);
+        console.log(`Board populated with seed: ${newSeed}`);
+        
+        // Save the new board state to backend
+        const boardId = await API.saveBoard(this.gameState, this.theme, newSeed, null);
+        console.log(`Board saved with ID: ${boardId}`);
 
-        // Re-populate the board with new seed
-        const result = this.board.populateBoard(this.gameState.currentWords, this.seed, true);
-        const boardId = await API.saveBoard(this.gameState, this.theme, this.seed, null);
-
-        this.gameState.boardId = boardId;
-        Utils.updateCurrentUrl(this.seed, this.theme, boardId);
-
-        // Update UI
-        this.ui.updateScore(0, 0, true);
-        this.ui.updateTurnDisplay(true);
-        this.ui.updateShuffleButton();
-
-        console.log(`New seed used: ${this.seed}`);
+        // Update URL and reload page to ensure clean initialization
+        const newUrl = `${window.location.pathname}?seed=${newSeed}&theme=${encodeURIComponent(this.theme)}&board_id=${boardId}`;
+        console.log(`Reloading page with URL: ${newUrl}`);
+        window.location.href = newUrl;
     }
 
     handleNewTheme() {

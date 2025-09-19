@@ -1,3 +1,9 @@
+"""
+routes.py
+
+Defines Flask routes for Themed Codenames, including endpoints for rendering templates, generating/retrieving themed words, and saving/loading game boards.
+"""
+
 from flask import Blueprint, request, jsonify, render_template, current_app
 import json
 from .services.word_service import generate_words

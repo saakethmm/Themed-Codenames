@@ -1,4 +1,7 @@
 // hinduWords.js
+//
+// Exports a list of Hinduism-related words, including deities, concepts, festivals, symbols, animals, places, literature, and mantras, for use as default words in the Codenames game.
+// (homage to original implementation of game for CMU HinduYUVA)
 
 export const hinduWords = [
     // Deities and Mythological Figures

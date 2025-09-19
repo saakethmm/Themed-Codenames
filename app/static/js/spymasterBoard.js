@@ -1,3 +1,7 @@
+// spymasterBoard.js
+//
+// Provides the SpymasterBoard class for managing the spymaster's view of the Codenames board, including seeded shuffling, board initialization, and revealing card colors.
+
 import { hinduWords } from './hinduwords.js';
 
 export class SpymasterBoard {

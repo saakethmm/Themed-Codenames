@@ -1,3 +1,7 @@
+// gameState.js
+//
+// Provides the GameState class for managing the state of a Codenames game session, including scores, turn logic, revealed cards, undo functionality, and serialization for saving/loading.
+
 export class GameState {
     constructor() {
         this.scores = {

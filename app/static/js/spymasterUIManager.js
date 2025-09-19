@@ -1,3 +1,7 @@
+// spymasterUIManager.js
+//
+// Provides the SpymasterUIManager class, extending UIManager for the spymaster view. Handles UI updates specific to the spymaster, disabling player-only features.
+
 import { UIManager } from './uiManager.js';
 
 export class SpymasterUIManager extends UIManager {

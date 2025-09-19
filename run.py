@@ -1,8 +1,11 @@
+"""
+run.py
+
+Entry point for running the Themed Codenames Flask application. Sets up the app with the appropriate configuration based on environment.
+"""
+
 from app import create_app
 import os
-
-# TEMP: Force FLASK_ENV to development for local testing
-os.environ['FLASK_ENV'] = 'development'
 
 # Determine the environment and set the configuration class
 config_class = 'config.DevelopmentConfig' if os.getenv('FLASK_ENV') == 'development' else 'config.ProductionConfig'

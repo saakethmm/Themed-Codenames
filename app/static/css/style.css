@@ -1,3 +1,9 @@
+/*
+style.css
+
+Provides the main styling for the Themed Codenames web application, including layout, game board, cards, input areas, modals, and interactive elements for a clean and user-friendly interface.
+*/
+
 body {
     display: flex;
     flex-direction: column;

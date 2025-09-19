@@ -1,12 +1,15 @@
+// player.js
+//
+// Main entry point for the player view in Themed Codenames. Handles game initialization, theme submission, board population, event listeners, and UI updates for gameplay.
+// Imports
 import { GameState } from './gameState.js';
 import { UIManager } from './uiManager.js';
 import { Board } from './board.js';
 import { API } from './api.js';
 import { Utils } from './utils.js';
 
-// TODO: update README, take screenshot of gameplay and publish (local version, mention online multiplayer version will be completed later)!
-// include note in the README to ask if any issues are found or if anyone would like to contribute to multiplayer version
 
+// CodeNamesGame class
 class CodeNamesGame {
     constructor() {
         this.gameState = new GameState();

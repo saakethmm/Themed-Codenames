@@ -1,3 +1,7 @@
+// api.js
+//
+// Provides the API class for interacting with the backend server, including methods to fetch themed words, save game boards, and load saved boards for the Themed Codenames application.
+
 export class API {
     static async fetchWords(theme) {
         try {

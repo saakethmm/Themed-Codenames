@@ -1,6 +1,10 @@
 # Themed Codenames
 
-Ever wanted to play the classic Codenames game but with words from any arbitrary theme? This version helps you do exactly that, leveraging modern LLMs via ollama (local) or API calls to GPT-4o-mini to help generate the words. 
+Ever wanted to play the classic Codenames game but with words from any arbitrary theme? This version helps you do exactly that, leveraging modern LLMs via ollama to help generate the words.
+
+![Demo of Themed Codenames](assets/demo_themed_codenames.gif)
+
+> **Notice:** If you find any issues or would like to contribute (especially to a multiplayer version), please open an issue or pull request on GitHub!
 
 ## Features
 
@@ -10,78 +14,61 @@ Ever wanted to play the classic Codenames game but with words from any arbitrary
 
 ## Setup (for local)
 
+Follow these steps in your command line interface (Terminal on Mac/WSL for Windows):
+
 1. **Clone the repository:**
 
    ```sh
-   git clone <repository-url>
-   cd hindu_codenames
+   git clone https://github.com/saakethmm/Themed-Codenames.git
+   cd Themed-Codenames
+   ```
 
-2. Install dependencies using `conda`
+2. **Install dependencies using `conda`:**
 
-```sh
-conda env create -f environment.yaml
-conda activate themed-codenames
-```
+   ```sh
+   conda env create -f environment.yaml
+   conda activate themed-codenames
+   ```
 
-3. Set up environment variables
+3. **Install appropriate ollama model**
 
-```sh
-export FLASK_ENV=development
-export OPENAI_API_KEY=your_openai_api_key
-```
+   ```sh
+   ollama pull llama3.2:latest
+   ```
+   > **Note:** If you wish to use a different model, you must also update the model name on line 66 of `app/word_service.py` to match your chosen model.
 
-4. Run Flask Application
+4. **Set up environment variables:**
 
-```python
-python run.py
-```
+   ```sh
+   export FLASK_ENV=development
+   ```
+
+5. **Run Flask Application:**
+
+   ```sh
+   python run.py
+   ```
 
 ## Configuration
 
 - `config.py`: Contains configuration classes for development and production environments.
-
-- `DevelopmentConfig`: Use Ollama for local word generation.
-
-- `ProductionConfig`: Use OpenAI API for word generation.
+- `DevelopmentConfig`: Uses Ollama for local word generation.
 
 ## Usage
 
-1. Access Application
-
-- Player: http://127.0.0.1:5000/
-- Spymaster: http://127.0.0.1:5000/spymaster
-
+1. Access the application at [http://127.0.0.1:5000](http://127.0.0.1:5000)
 2. Enter a theme in the input field and click "Submit" to generate words related to that theme.
-
-## File Structure
-
-- **app/**: Contains the Flask application.
-  - **templates/**: HTML templates.
-    - `player.html`: Player view.
-    - `spymaster.html`: Spymaster view.
-  - **static/**: Static files (CSS, JS).
-    - **css/**: Stylesheets.
-      - `style.css`: Main stylesheet.
-    - **js/**: JavaScript files.
-      - `player.js`: Player logic.
-      - `spymaster.js`: Spymaster logic.
-      - `hinduwords.js`: Default words (original game).
-  - **services/**: Service files.
-    - `word_service.py`: Word generation logic.
-  - `routes.py`: Flask routes.
-  - `__init__.py`: Flask app factory.
-- **tests/**: Unit tests.
-  - `test_routes.py`: Tests for routes.
-- `config.py`: Configuration classes.
-- `run.py`: Entry point to run the Flask application.
-- `game_words.json`: Stores generated words for the all game sessions played so far.
+3. Enjoy the game with your custom Codenames! (edit cards by right clicking if any cards don't fit)
 
 ## Testing
 
 Run the unit tests using:
 
-```python
+```sh
 python -m unittest discover tests
 ```
 
-## License (TODO)
+## Future Updates
+
+1. Add API call functionality to desired LLM
+2. Allow multiplayer across devices, hosted on a website

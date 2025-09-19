@@ -1,3 +1,7 @@
+// spymaster.js
+//
+// Main entry point for the spymaster view in Themed Codenames. Handles board loading, URL management, error handling, and UI updates for the spymaster role.
+
 import { SpymasterUIManager } from './spymasterUIManager.js';
 import { SpymasterBoard } from './spymasterBoard.js';
 import { API } from './api.js';

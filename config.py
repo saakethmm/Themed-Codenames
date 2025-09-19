@@ -1,3 +1,9 @@
+"""
+config.py
+
+Defines configuration classes for Themed Codenames, including settings for development and production environments.
+"""
+
 class Config:
     DEBUG = True
     TESTING = False

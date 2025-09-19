@@ -1,3 +1,7 @@
+// board.js
+//
+// Provides the Board class for managing the Codenames game board, including seeded shuffling, populating cards, handling card interactions, and context menu editing.
+
 import { hinduWords } from './hinduwords.js';
 
 export class Board {

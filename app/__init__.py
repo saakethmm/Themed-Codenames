@@ -1,3 +1,9 @@
+"""
+app/__init__.py
+
+Initializes the Flask application for Themed Codenames, sets configuration, and registers blueprints.
+"""
+
 from flask import Flask
 
 def create_app(config_class='config.Config'):

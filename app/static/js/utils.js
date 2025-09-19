@@ -1,3 +1,7 @@
+// utils.js
+//
+// Provides the Utils class with static helper methods for URL management, seed generation, and async delays in the Themed Codenames application.
+
 export class Utils {
     static updateCurrentUrl(seed, theme, boardId) {
         const currentUrlParams = new URLSearchParams(window.location.search);

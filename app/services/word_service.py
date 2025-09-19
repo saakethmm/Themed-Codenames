@@ -1,3 +1,9 @@
+"""
+word_service.py
+
+Provides functions for generating themed word lists for the Codenames game using local Ollama LLM or (future) API, and for saving generated words to a JSON file.
+"""
+
 import ollama 
 import openai
 import json
@@ -5,34 +11,15 @@ import re
 import random
 
 
-# 1. for myself: use ollama to generate words locally using model of choice (mistral-7b or llama3-8b) 
-# 2. for users: use gpt4o-mini to generate words using my API key (charged to me for now); precompute a list of words for several themes 
-# and shuffle them for each request to avoid generating the same words each time (if there's a hit, no need to query the API; otherwise,
-# query the API and save the result for future requests)
-
-# for either option, best would be to include a shuffle option to shuffle the existing words while generating a larger list so the user 
-# doesn't keep generating
-
-# Use OpenAI API for users (Replace with your actual API key)
-openai.api_key = "your_openai_api_key" # TODO: replace with my actual API key
+openai.api_key = "your_openai_api_key" # TODO: replace with my API key
 
 # File to store generated words for frontend use
 GAME_WORDS_FILE = "game_words.json"
 
-# Precomputed words database (load from a file)
-# WORDS_DB_FILE = "precomputed_words.json"
-# try:
-#     with open(WORDS_DB_FILE, "r") as file:
-#         WORDS_DB = json.load(file)
-# except FileNotFoundError:
-#     WORDS_DB = {}  # Initialize empty if file doesn't exist
-
-# def save_precomputed_words():
-#     """Save the updated word cache to the file."""
-#     with open(WORDS_DB_FILE, "w") as file:
-#         json.dump(WORDS_DB, file, indent=4)
-
 def comma_separated_list_from_numbered(words_str: str):
+    """
+    Converts a numbered list of words (as a string) into a comma-separated string, removing the numbering.
+    """
     words = []
     for line in words_str.split('\n'):
         # Remove the numbering pattern (digits followed by a period and space)
@@ -44,7 +31,9 @@ def comma_separated_list_from_numbered(words_str: str):
 
 
 def save_game_words(theme: str, words: list):
-    """Save the generated words for the current game session."""
+    """
+    Saves the generated words for a given theme into the game_words.json file, appending if the theme already exists.
+    """
     try:
         with open(GAME_WORDS_FILE, "r") as file:
             game_words = json.load(file)
@@ -61,8 +50,10 @@ def save_game_words(theme: str, words: list):
         json.dump(game_words, file, indent=4)
 
 def generate_words_local(theme):
-    """Generate words using local Ollama (for personal use)."""
-    prompt = f"Generate 40 different words/phrases on the theme: '{theme}' as a numbered list. No repeats. Don't include a header or footer:"
+    """
+    Uses the local Ollama model (llama3.2:latest) to generate 40 words related to the given theme, saves them, and returns them as a comma-separated string.
+    """
+    prompt = f"Generate 40 different words on the theme: '{theme}' as a numbered list. No repeats. Don't include a header or footer:"
     response = ollama.chat(model="llama3.2:latest", messages=[{"role": "user", "content": prompt}])
     # Extract the words, removing only the list numbering pattern
     words_str = words = response["message"]["content"]
@@ -71,28 +62,16 @@ def generate_words_local(theme):
     save_game_words(theme, words)  # Save 40 words
     return words
 
-# TODO! 
+# TODO: will be fixed in later update 
 def generate_words_api(theme):
-    """Generate words using OpenAI GPT-4o Mini API (for public users)."""
-    if theme in WORDS_DB:
-        words = random.sample(WORDS_DB[theme], 25)  # Shuffle precomputed list
-    else:
-        prompt = f"Generate 40 different words or phrases related to {theme} as a numbered list. No repeats. Don't include a header or footer:"
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7
-        )
-        words_str = response["choices"][0]["message"]["content"]
-        words = comma_separated_list_from_numbered(words_str)
-
-        WORDS_DB[theme] = words
-        save_precomputed_words()  # Cache for future use
-
-    save_game_words(theme, words)  # Save to game JSON
-    return words
+    """
+    Placeholder for future API-based word generation (currently not implemented).
+    """
+    pass
 
 
 def generate_words(theme, use_ollama=False):
-    """Main function to generate words based on request type."""
+    """
+    Main function to generate words; uses Ollama if use_ollama is True, otherwise will use the API function (currently not implemented).
+    """
     return generate_words_local(theme) if use_ollama else generate_words_api(theme)

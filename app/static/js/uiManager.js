@@ -1,3 +1,7 @@
+// uiManager.js
+//
+// Provides the UIManager class for managing and updating the user interface in the player view of Themed Codenames, including score, turn display, error popups, and board controls.
+
 export class UIManager {
     constructor(gameState) {
         this.gameState = gameState;
